@@ -302,9 +302,10 @@ yarn sls:user-service remove \
 Publish SQS events:
 
 ```ts
+import { SERVERLESS_SERVICE_NAME } from '@constants/service.const';
 import { getSQS } from '@lib/sqs.lib';
 
-await getSQS(process.env.USER_EVENTS_QUEUE_URL!).publishEvents('user-service', 'user.created', [
+await getSQS(process.env.USER_EVENTS_QUEUE_URL!).publishEvents(SERVERLESS_SERVICE_NAME, 'user.created', [
     {
         userId: 'user-id',
     },
@@ -314,9 +315,10 @@ await getSQS(process.env.USER_EVENTS_QUEUE_URL!).publishEvents('user-service', '
 Publish SNS events:
 
 ```ts
+import { SERVERLESS_SERVICE_NAME } from '@constants/service.const';
 import { getSNS } from '@lib/sns.lib';
 
-await getSNS(process.env.USER_EVENTS_TOPIC_ARN!).publishEvents('user-service', 'user.created', [
+await getSNS(process.env.USER_EVENTS_TOPIC_ARN!).publishEvents(SERVERLESS_SERVICE_NAME, 'user.created', [
     {
         userId: 'user-id',
     },

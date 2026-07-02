@@ -1,4 +1,11 @@
 import status from 'http-status-codes';
+import {
+    DEFAULT_LOCAL_USER_ID,
+    SERVERLESS_SERVICE_NAME,
+    TEST_SQS_DEFAULT_MESSAGE,
+    TEST_SQS_EVENT_NAME,
+    USER_EVENTS_QUEUE_DEFAULT,
+} from '@constants/service.const';
 import { lambdaHandler } from '@lib/lambda-handler.lib';
 import {
     getSQS,
@@ -24,9 +31,9 @@ const getPayload = (
     userId?: string,
 ): QueueMessage =>
     data.payload ?? {
-        event: 'test.sqs.message',
-        message: data.message ?? 'hello from sqs test lambda',
-        userId: userId ?? 'local-user-id',
+        event: TEST_SQS_EVENT_NAME,
+        message: data.message ?? TEST_SQS_DEFAULT_MESSAGE,
+        userId: userId ?? DEFAULT_LOCAL_USER_ID,
         createdAt: new Date().toISOString(),
     };
 
@@ -35,12 +42,12 @@ const getQueue = (data: SendSqsTestRequest): string =>
         ?? data.queueName
         ?? process.env.USER_EVENTS_QUEUE_URL
         ?? process.env.USER_EVENTS_QUEUE_NAME
-        ?? 'user-events';
+        ?? USER_EVENTS_QUEUE_DEFAULT;
 
 export const handler = lambdaHandler<SendSqsTestRequest, SendSqsTestResponse>(async ({ data, ctx }) => {
     const queue = getQueue(data);
     const payload = getPayload(data, ctx.userId);
-    const responses = await getSQS(queue).publishEvents('user-service', 'test.sqs.message', [payload]);
+    const responses = await getSQS(queue).publishEvents(SERVERLESS_SERVICE_NAME, TEST_SQS_EVENT_NAME, [payload]);
     const messageIds = responses.reduce<string[]>((result, response) => {
         for (const item of response.Successful ?? []) {
             if (item.MessageId) {

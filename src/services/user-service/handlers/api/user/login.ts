@@ -1,3 +1,7 @@
+import {
+    DEFAULT_LOCAL_USER_ID,
+    USERS_TABLE_DEFAULT,
+} from '@constants/service.const';
 import { lambdaHandler } from '@lib/lambda-handler.lib';
 import { invokeSum } from '../../invokers/sum.invoker';
 import status from 'http-status-codes';
@@ -28,10 +32,10 @@ export const handler = lambdaHandler<LoginRequest, LoginResponse>(async ({ data,
         b: 25,
     });
 
-    const tableName = process.env.USERS_TABLE_NAME ?? 'users';
+    const tableName = process.env.USERS_TABLE_NAME ?? USERS_TABLE_DEFAULT;
     const userId = ctx.userId
         ?? (typeof data.userId === 'string' ? data.userId : undefined)
-        ?? 'local-user-id';
+        ?? DEFAULT_LOCAL_USER_ID;
 
     const item: LoginUserItem = {
         pk: userId,

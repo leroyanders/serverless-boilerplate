@@ -1,4 +1,12 @@
 import status from 'http-status-codes';
+import {
+    DEFAULT_LOCAL_USER_ID,
+    SERVERLESS_SERVICE_NAME,
+    TEST_SNS_DEFAULT_MESSAGE,
+    TEST_SNS_DEFAULT_SUBJECT,
+    TEST_SNS_EVENT_NAME,
+    USER_EVENTS_TOPIC_DEFAULT,
+} from '@constants/service.const';
 import { lambdaHandler } from '@lib/lambda-handler.lib';
 import {
     getSNS,
@@ -25,9 +33,9 @@ const getPayload = (
     userId?: string,
 ): TopicMessage =>
     data.payload ?? {
-        event: 'test.sns.message',
-        message: data.message ?? 'hello from sns test lambda',
-        userId: userId ?? 'local-user-id',
+        event: TEST_SNS_EVENT_NAME,
+        message: data.message ?? TEST_SNS_DEFAULT_MESSAGE,
+        userId: userId ?? DEFAULT_LOCAL_USER_ID,
         createdAt: new Date().toISOString(),
     };
 
@@ -36,13 +44,13 @@ const getTopic = (data: PublishSnsTestRequest): string =>
         ?? data.topicName
         ?? process.env.USER_EVENTS_TOPIC_ARN
         ?? process.env.USER_EVENTS_TOPIC_NAME
-        ?? 'user-events';
+        ?? USER_EVENTS_TOPIC_DEFAULT;
 
 export const handler = lambdaHandler<PublishSnsTestRequest, PublishSnsTestResponse>(async ({ data, ctx }) => {
     const topic = getTopic(data);
     const payload = getPayload(data, ctx.userId);
-    const responses = await getSNS(topic).publishEvents('user-service', 'test.sns.message', [payload], {
-        subject: data.subject ?? 'local sns test',
+    const responses = await getSNS(topic).publishEvents(SERVERLESS_SERVICE_NAME, TEST_SNS_EVENT_NAME, [payload], {
+        subject: data.subject ?? TEST_SNS_DEFAULT_SUBJECT,
     });
     const messageIds = responses.reduce<string[]>((result, response) => {
         for (const item of response.Successful ?? []) {

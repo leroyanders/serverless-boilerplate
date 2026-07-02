@@ -1,14 +1,34 @@
 import 'tsconfig-paths/register';
 import Aws, { Serverless } from 'serverless/aws';
 import {
+    API_USER_LOGIN_FN,
+    API_USER_LOGIN_HANDLER,
+    AUTHORIZER_FN,
+    AUTHORIZER_HANDLER,
+    CFN_ARN_ATTRIBUTE,
+    HTTP_GET_METHOD,
+    HTTP_POST_METHOD,
     INVOKE_SUM_RESOLVER_FN,
+    INVOKE_SUM_RESOLVER_HANDLER,
+    REQUEST_AUTHORIZER_TYPE,
+    ROOT_HTTP_PATH,
     SERVERLESS_SERVICE_NAME,
+    SERVERLESS_USER_DOMAIN,
     SERVERLESS_USER_STACK,
+    SQS_EVENT_BATCH_SIZE,
+    SQS_REPORT_BATCH_ITEM_FAILURES,
+    SSM_USER_SERVICE_DOMAIN_RESOURCE,
     TEST_HANDLE_QUEUE_MESSAGE_FN,
+    TEST_HANDLE_QUEUE_MESSAGE_HANDLER,
     TEST_HANDLE_TOPIC_MESSAGE_FN,
+    TEST_HANDLE_TOPIC_MESSAGE_HANDLER,
     TEST_PUBLISH_TOPIC_MESSAGE_FN,
+    TEST_PUBLISH_TOPIC_MESSAGE_HANDLER,
+    TEST_SNS_HTTP_PATH,
     TEST_SEND_QUEUE_MESSAGE_FN,
-} from "@constants/service.const"
+    TEST_SEND_QUEUE_MESSAGE_HANDLER,
+    TEST_SQS_HTTP_PATH,
+} from '@constants/service.const';
 import * as SLS from '../sls.defaults';
 import {
     USER_EVENTS_QUEUE_RESOURCE,
@@ -35,80 +55,80 @@ module.exports = {
     } as Aws.Provider,
 
     functions: {
-        auth: {
-          handler: 'authorizer.handler',
+        [AUTHORIZER_FN]: {
+            handler: AUTHORIZER_HANDLER,
         },
 
-        apiUserLogin: {
-            handler: 'handlers/api/user/login.handler',
+        [API_USER_LOGIN_FN]: {
+            handler: API_USER_LOGIN_HANDLER,
             events: [
                 {
                     http: {
-                        method: "GET",
-                        path: "/",
+                        method: HTTP_GET_METHOD,
+                        path: ROOT_HTTP_PATH,
                         authorizer: {
-                            name: "auth",
-                            type: "request",
-                        }
+                            name: AUTHORIZER_FN,
+                            type: REQUEST_AUTHORIZER_TYPE,
+                        },
                     },
-                }
-            ]
+                },
+            ],
         },
 
         [INVOKE_SUM_RESOLVER_FN]: {
             name: `${SERVERLESS_USER_STACK}-${INVOKE_SUM_RESOLVER_FN}`,
-            handler: 'handlers/resolvers/sum.resolver.handler',
+            handler: INVOKE_SUM_RESOLVER_HANDLER,
         },
 
         [TEST_SEND_QUEUE_MESSAGE_FN]: {
-            handler: 'handlers/api/test/send-sqs.handler',
+            handler: TEST_SEND_QUEUE_MESSAGE_HANDLER,
             events: [
                 {
                     http: {
-                        method: "POST",
-                        path: "/test/sqs",
+                        method: HTTP_POST_METHOD,
+                        path: TEST_SQS_HTTP_PATH,
                         authorizer: {
-                            name: "auth",
-                            type: "request",
-                        }
+                            name: AUTHORIZER_FN,
+                            type: REQUEST_AUTHORIZER_TYPE,
+                        },
                     },
-                }
-            ]
+                },
+            ],
         },
 
         [TEST_PUBLISH_TOPIC_MESSAGE_FN]: {
-            handler: 'handlers/api/test/publish-sns.handler',
+            handler: TEST_PUBLISH_TOPIC_MESSAGE_HANDLER,
             events: [
                 {
                     http: {
-                        method: "POST",
-                        path: "/test/sns",
+                        method: HTTP_POST_METHOD,
+                        path: TEST_SNS_HTTP_PATH,
                         authorizer: {
-                            name: "auth",
-                            type: "request",
-                        }
+                            name: AUTHORIZER_FN,
+                            type: REQUEST_AUTHORIZER_TYPE,
+                        },
                     },
-                }
-            ]
+                },
+            ],
         },
 
         [TEST_HANDLE_QUEUE_MESSAGE_FN]: {
-            handler: 'handlers/events/sqs/user-events.handler',
+            handler: TEST_HANDLE_QUEUE_MESSAGE_HANDLER,
             events: [
                 {
                     sqs: {
                         arn: {
-                            'Fn::GetAtt': [USER_EVENTS_QUEUE_RESOURCE, 'Arn'],
+                            'Fn::GetAtt': [USER_EVENTS_QUEUE_RESOURCE, CFN_ARN_ATTRIBUTE],
                         } as unknown as string,
-                        batchSize: 10,
-                        functionResponseType: "ReportBatchItemFailures",
+                        batchSize: SQS_EVENT_BATCH_SIZE,
+                        functionResponseType: SQS_REPORT_BATCH_ITEM_FAILURES,
                     },
                 },
-            ]
+            ],
         },
 
         [TEST_HANDLE_TOPIC_MESSAGE_FN]: {
-            handler: 'handlers/events/sns/user-events.handler',
+            handler: TEST_HANDLE_TOPIC_MESSAGE_HANDLER,
             events: [
                 {
                     sns: {
@@ -118,13 +138,13 @@ module.exports = {
                         topicName: USER_EVENTS_TOPIC,
                     },
                 },
-            ]
+            ],
         },
     },
 
     resources: {
         Resources: {
-            SSMAuthServiceDomain: SLS.genApiEndpoint('user'),
+            [SSM_USER_SERVICE_DOMAIN_RESOURCE]: SLS.genApiEndpoint(SERVERLESS_USER_DOMAIN),
             ...Resources,
         },
         Outputs,
