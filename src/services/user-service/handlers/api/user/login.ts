@@ -1,8 +1,17 @@
 import { lambdaHandler } from '@lib/lambda-handler.lib';
 import { invokeSum } from '../../invokers/sum.invoker';
 import status from 'http-status-codes';
+import type { SumResolverReturnType } from '../../../types';
 
-export const handler = lambdaHandler(async ({ data, ctx }) => {
+type LoginRequest = Record<string, unknown>;
+
+interface LoginResponse {
+    data: LoginRequest;
+    userId?: string;
+    sum: SumResolverReturnType;
+}
+
+export const handler = lambdaHandler<LoginRequest, LoginResponse>(async ({ data, ctx }) => {
     const sum = await invokeSum({
         a: 10,
         b: 25,
@@ -10,10 +19,10 @@ export const handler = lambdaHandler(async ({ data, ctx }) => {
 
     return {
         statusCode: status.OK,
-        body: JSON.stringify({
+        body: {
             data,
             userId: ctx.userId,
             sum,
-        }),
+        },
     };
 });

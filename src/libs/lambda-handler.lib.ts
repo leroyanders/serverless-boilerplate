@@ -4,12 +4,16 @@ import {
     Context,
 } from 'aws-lambda';
 
-type Handler<T = unknown> = (
-    request: LambdaRequest<T>,
-) => Promise<APIGatewayProxyResult> | APIGatewayProxyResult;
+type LambdaResponse<TResponse = unknown> = Omit<APIGatewayProxyResult, 'body'> & {
+    body: TResponse;
+};
+
+type Handler<TRequest = unknown, TResponse = unknown> = (
+    request: LambdaRequest<TRequest>,
+) => Promise<LambdaResponse<TResponse>> | LambdaResponse<TResponse>;
 
 export const lambdaHandler =
-    <T = unknown>(handler: Handler<T>) =>
+    <TRequest = unknown, TResponse = unknown>(handler: Handler<TRequest, TResponse>) =>
         async (
             event: APIGatewayProxyEvent,
             _: Context,
@@ -22,14 +26,21 @@ export const lambdaHandler =
                 ...event.pathParameters,
                 ...event.queryStringParameters,
                 ...body,
-            } as T;
+            } as TRequest;
 
             const ctx: LambdaContext = {
                 userId: event.requestContext?.authorizer?.userId as string | undefined,
             };
 
-            return handler({
+            const response = await handler({
                 data,
                 ctx,
             });
+
+            return {
+                ...response,
+                body: typeof response.body === 'string'
+                    ? response.body
+                    : JSON.stringify(response.body),
+            };
         };

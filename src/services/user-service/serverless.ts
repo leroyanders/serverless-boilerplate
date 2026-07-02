@@ -16,7 +16,7 @@ module.exports = {
           bundle: true,
           minify: true,
           platform: "node",
-          tsconfig: './tsconfig.json',
+          tsconfig: '../../../tsconfig.json',
       }
     } as Aws.Custom,
 
@@ -37,11 +37,11 @@ module.exports = {
 
     functions: {
         auth: {
-          handler: 'src/authorizer.handler',
+          handler: '../../../src/authorizer.handler',
         },
 
         apiUserLogin: {
-            handler: 'src/user-service/handlers/api/user/login.handler',
+            handler: 'handlers/api/user/login.handler',
             events: [
                 {
                     http: {
@@ -57,7 +57,7 @@ module.exports = {
         },
 
         [INVOKE_SUM_RESOLVER_FN]: {
-            handler: 'src/user-service/handlers/resolvers/sum.resolver.handler',
+            handler: 'handlers/resolvers/sum.resolver.handler',
         },
     }
 } as Serverless;

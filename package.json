@@ -3,6 +3,13 @@
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
+  "scripts": {
+    "sls:user-service": "zsh -c 'pushd src/services/user-service > /dev/null && sls \"$@\"; exit_code=$?; popd > /dev/null; exit $exit_code' --",
+    "sls:user-service:print": "yarn sls:user-service print",
+    "sls:user-service:deploy": "yarn sls:user-service deploy",
+    "sls:user-service:remove": "yarn sls:user-service remove",
+    "sls:user-service:invoke": "yarn sls:user-service invoke local"
+  },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.162",
     "@types/jsonwebtoken": "^9.0.10",

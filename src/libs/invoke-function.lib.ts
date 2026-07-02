@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { execa } from 'execa';
 
@@ -7,13 +8,21 @@ const lambdaClient = new LambdaClient({
 });
 
 const isDev = process.env.NODE_ENV === 'dev';
-const projectRoot = process.env.INIT_CWD || process.env.PWD || process.cwd();
-const slsBin = path.resolve(
-    projectRoot,
-    'node_modules',
-    '.bin',
-    'sls',
-);
+const serviceRoot = process.env.PWD || process.cwd();
+
+const resolveSlsBin = (): string => {
+    const candidates = [
+        process.env.INIT_CWD,
+        serviceRoot,
+        path.resolve(serviceRoot, '../../..'),
+    ]
+        .filter((root): root is string => Boolean(root))
+        .map((root) => path.resolve(root, 'node_modules', '.bin', 'sls'));
+
+    return candidates.find(existsSync) ?? 'sls';
+};
+
+const slsBin = resolveSlsBin();
 
 const toResolverName = (functionName: string): string =>
     functionName.endsWith('Resolver')
@@ -36,7 +45,7 @@ export const invokeFunction = async <TResult, TParams = void>(
             '--data',
             JSON.stringify(params),
         ], {
-            cwd: projectRoot,
+            cwd: serviceRoot,
         });
 
         return JSON.parse(stdout) as TResult;

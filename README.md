@@ -49,6 +49,8 @@ The API handler stays thin: it receives normalized request data, reads authentic
 │   │   └── lambda-handler.lib.ts
 │   └── services
 │       └── user-service
+│           ├── __test
+│           │   └── event.json
 │           ├── handlers
 │           │   ├── api
 │           │   │   └── user
@@ -60,8 +62,6 @@ The API handler stays thin: it receives normalized request data, reads authentic
 │           ├── interfaces
 │           ├── serverless.ts
 │           └── types
-├── __test
-│   └── event.json
 ├── package.json
 ├── tsconfig.json
 └── yarn.lock
@@ -90,18 +90,12 @@ export JWT_SECRET=local-secret
 export AWS_REGION=eu-central-1
 ```
 
-Enter the service directory:
-
-```bash
-cd src/services/user-service
-```
-
-Serverless resolves handlers from the directory that contains `serverless.ts`, so service commands should be run from this folder.
+Serverless commands can be run from the project root through package scripts. The scripts use `pushd` internally to execute Serverless from the `user-service` directory.
 
 Invoke the sample resolver locally:
 
 ```bash
-yarn sls invoke local \
+yarn sls:user-service invoke local \
   --function invokeSumResolver \
   --data '{"a":10,"b":25}'
 ```
@@ -109,17 +103,27 @@ yarn sls invoke local \
 Invoke the API handler with the sample event:
 
 ```bash
-yarn sls invoke local \
+yarn sls:user-service invoke local \
   --function apiUserLogin \
   --path __test/event.json
 ```
+
+## Scripts
+
+| Script | Description |
+| --- | --- |
+| `yarn sls:user-service <command>` | Run any Serverless command inside `src/services/user-service`. |
+| `yarn sls:user-service:print` | Print the compiled Serverless config. |
+| `yarn sls:user-service:deploy` | Deploy the user service. |
+| `yarn sls:user-service:remove` | Remove the user service stack. |
+| `yarn sls:user-service:invoke` | Run `sls invoke local` for the user service. |
 
 ## Deploy
 
 Deploy the user service:
 
 ```bash
-yarn sls deploy \
+yarn sls:user-service deploy \
   --stage dev \
   --region eu-central-1
 ```
@@ -127,7 +131,7 @@ yarn sls deploy \
 Remove the deployed stack:
 
 ```bash
-yarn sls remove \
+yarn sls:user-service remove \
   --stage dev \
   --region eu-central-1
 ```
@@ -174,7 +178,7 @@ invokeCreateUser(...)
 - Keep shared Lambda utilities in `src/libs`.
 - Keep stack and function names in `src/constants/service.const.ts`.
 - Use path aliases for stable imports instead of long relative paths.
-- Keep local test payloads in `__test`.
+- Keep local test payloads in each service-local `__test` directory.
 
 ## Production Checklist
 
@@ -188,7 +192,7 @@ invokeCreateUser(...)
 
 **`Service configuration is expected to be placed in a root of a service`**
 
-Run Serverless commands from `src/services/user-service`, where the service `serverless.ts` file lives.
+Use `yarn sls:user-service <command>` from the project root, or run Serverless directly from `src/services/user-service`.
 
 **`Compilation failed for function alias`**
 
