@@ -1,0 +1,23 @@
+name: serverless-local
+
+services:
+  localstack:
+    image: localstack/localstack:4.4.0
+    container_name: serverless-localstack
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: sqs,sns,dynamodb
+      AWS_DEFAULT_REGION: eu-central-1
+      DEBUG: "0"
+      PERSISTENCE: "1"
+    volumes:
+      - localstack-data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:4566/_localstack/health > /dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  localstack-data:

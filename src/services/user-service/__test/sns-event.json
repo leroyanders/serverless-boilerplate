@@ -1,0 +1,22 @@
+{
+  "Records": [
+    {
+      "EventSource": "aws:sns",
+      "EventVersion": "1.0",
+      "EventSubscriptionArn": "arn:aws:sns:eu-central-1:000000000000:user-events:local-subscription",
+      "Sns": {
+        "Type": "Notification",
+        "MessageId": "local-sns-message-id",
+        "TopicArn": "arn:aws:sns:eu-central-1:000000000000:user-events",
+        "Subject": "local sns fixture",
+        "Message": "{\"event\":\"fixture.sns.consume\",\"message\":\"hello from sns event fixture\"}",
+        "Timestamp": "2026-07-02T00:00:00.000Z",
+        "SignatureVersion": "1",
+        "Signature": "local-signature",
+        "SigningCertUrl": "http://localhost:4566/local-cert",
+        "UnsubscribeUrl": "http://localhost:4566/unsubscribe",
+        "MessageAttributes": {}
+      }
+    }
+  ]
+}

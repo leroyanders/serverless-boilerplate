@@ -1,0 +1,20 @@
+{
+  "Records": [
+    {
+      "messageId": "local-sqs-message-id",
+      "receiptHandle": "local-receipt-handle",
+      "body": "{\"event\":\"fixture.sqs.consume\",\"message\":\"hello from sqs event fixture\"}",
+      "attributes": {
+        "ApproximateReceiveCount": "1",
+        "SentTimestamp": "1700000000000",
+        "SenderId": "localstack",
+        "ApproximateFirstReceiveTimestamp": "1700000000001"
+      },
+      "messageAttributes": {},
+      "md5OfBody": "a135f2f782a5012ff6e6d9a9cbf1d328",
+      "eventSource": "aws:sqs",
+      "eventSourceARN": "arn:aws:sqs:eu-central-1:000000000000:user-events",
+      "awsRegion": "eu-central-1"
+    }
+  ]
+}

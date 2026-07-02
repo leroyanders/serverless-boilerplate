@@ -1,0 +1,13 @@
+{
+  "httpMethod": "POST",
+  "path": "/test/sqs",
+  "headers": {},
+  "queryStringParameters": {},
+  "pathParameters": {},
+  "body": "{\"payload\":{\"event\":\"fixture.sqs.send\",\"message\":\"hello from sqs fixture\"}}",
+  "requestContext": {
+    "authorizer": {
+      "userId": "local-user-id"
+    }
+  }
+}

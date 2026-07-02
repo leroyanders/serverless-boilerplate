@@ -1,28 +1,11 @@
-import path from 'node:path';
-import { existsSync } from 'node:fs';
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
-import { execa } from 'execa';
+import { invokeLocalFunction } from '@lib/serverless-local.lib';
 
 const lambdaClient = new LambdaClient({
     region: process.env.AWS_REGION,
 });
 
 const isDev = process.env.NODE_ENV === 'dev';
-const serviceRoot = process.env.PWD || process.cwd();
-
-const resolveSlsBin = (): string => {
-    const candidates = [
-        process.env.INIT_CWD,
-        serviceRoot,
-        path.resolve(serviceRoot, '../../..'),
-    ]
-        .filter((root): root is string => Boolean(root))
-        .map((root) => path.resolve(root, 'node_modules', '.bin', 'sls'));
-
-    return candidates.find(existsSync) ?? 'sls';
-};
-
-const slsBin = resolveSlsBin();
 
 const toResolverName = (functionName: string): string =>
     functionName.endsWith('Resolver')
@@ -37,16 +20,7 @@ export const invokeFunction = async <TResult, TParams = void>(
     const resolverName = toResolverName(functionName);
 
     if (isDev) {
-        const { stdout } = await execa(slsBin, [
-            'invoke',
-            'local',
-            '-f',
-            resolverName,
-            '--data',
-            JSON.stringify(params),
-        ], {
-            cwd: serviceRoot,
-        });
+        const stdout = await invokeLocalFunction(resolverName, params);
 
         return JSON.parse(stdout) as TResult;
     }

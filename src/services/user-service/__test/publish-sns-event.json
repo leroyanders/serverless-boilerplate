@@ -1,0 +1,13 @@
+{
+  "httpMethod": "POST",
+  "path": "/test/sns",
+  "headers": {},
+  "queryStringParameters": {},
+  "pathParameters": {},
+  "body": "{\"subject\":\"local sns test\",\"payload\":{\"event\":\"fixture.sns.publish\",\"message\":\"hello from sns fixture\"}}",
+  "requestContext": {
+    "authorizer": {
+      "userId": "local-user-id"
+    }
+  }
+}

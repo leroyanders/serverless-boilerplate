@@ -19,6 +19,9 @@ This boilerplate is designed for fast-moving serverless projects that still need
 - **Lambda resolver pattern** for splitting API-facing handlers from internal business operations.
 - **Local resolver execution** through `sls invoke local` when `NODE_ENV=dev`.
 - **AWS Lambda invocation** for production resolver calls through `@aws-sdk/client-lambda`.
+- **Typed AWS helpers** for SQS, SNS, and DynamoDB operations.
+- **Typed SQS/SNS handlers** with local producer-to-consumer dispatch.
+- **Dotenv-powered configuration** through `.env` and `serverless-dotenv-plugin`.
 - **Path aliases** for cleaner imports such as `@lib/*` and `@constants/*`.
 
 ## Architecture
@@ -45,16 +48,43 @@ The API handler stays thin: it receives normalized request data, reads authentic
 │   ├── constants
 │   │   └── service.const.ts
 │   ├── libs
+│   │   ├── aws-client-config.lib.ts
+│   │   ├── dynamodb.lib.ts
 │   │   ├── invoke-function.lib.ts
-│   │   └── lambda-handler.lib.ts
+│   │   ├── lambda-handler.lib.ts
+│   │   ├── serverless-local.lib.ts
+│   │   ├── sns-handler.lib.ts
+│   │   ├── sns.lib.ts
+│   │   ├── sqs-handler.lib.ts
+│   │   └── sqs.lib.ts
 │   └── services
+│       ├── sls.defaults.ts
 │       └── user-service
 │           ├── __test
-│           │   └── event.json
+│           │   ├── event.json
+│           │   ├── publish-sns-event.json
+│           │   ├── send-sqs-event.json
+│           │   ├── sns-event.json
+│           │   └── sqs-event.json
+│           ├── __sls
+│           │   ├── consts.ts
+│           │   ├── queues.ts
+│           │   ├── resources.ts
+│           │   ├── roles.ts
+│           │   ├── tables.ts
+│           │   └── topics.ts
 │           ├── handlers
 │           │   ├── api
+│           │   │   ├── test
+│           │   │   │   ├── publish-sns.ts
+│           │   │   │   └── send-sqs.ts
 │           │   │   └── user
 │           │   │       └── login.ts
+│           │   ├── events
+│           │   │   ├── sns
+│           │   │   │   └── user-events.ts
+│           │   │   └── sqs
+│           │   │       └── user-events.ts
 │           │   ├── invokers
 │           │   │   └── sum.invoker.ts
 │           │   └── resolvers
@@ -62,6 +92,8 @@ The API handler stays thin: it receives normalized request data, reads authentic
 │           ├── interfaces
 │           ├── serverless.ts
 │           └── types
+├── .env.example
+├── docker-compose.yml
 ├── package.json
 ├── tsconfig.json
 └── yarn.lock
@@ -82,13 +114,13 @@ Install dependencies:
 yarn install
 ```
 
-Set local environment variables:
+Create local environment variables:
 
 ```bash
-export NODE_ENV=dev
-export JWT_SECRET=local-secret
-export AWS_REGION=eu-central-1
+cp .env.example .env
 ```
+
+This workspace already includes a local `.env` with LocalStack-friendly AWS values. Serverless loads it through `serverless-dotenv-plugin`, and the AWS helper clients also load it directly for local code paths.
 
 Serverless commands can be run from the project root through package scripts. The scripts use `pushd` internally to execute Serverless from the `user-service` directory.
 
@@ -112,11 +144,114 @@ yarn sls:user-service invoke local \
 
 | Script | Description |
 | --- | --- |
+| `yarn local:aws:up` | Start LocalStack services. Cloud resources are defined by Serverless. |
+| `yarn local:aws:down` | Stop the local AWS stack. |
+| `yarn local:aws:logs` | Follow LocalStack logs. |
 | `yarn sls:user-service <command>` | Run any Serverless command inside `src/services/user-service`. |
 | `yarn sls:user-service:print` | Print the compiled Serverless config. |
 | `yarn sls:user-service:deploy` | Deploy the user service. |
 | `yarn sls:user-service:remove` | Remove the user service stack. |
 | `yarn sls:user-service:invoke` | Run `sls invoke local` for the user service. |
+
+## Dotenv
+
+Environment variables live in `.env`. The committed `.env.example` documents every required key.
+
+The Serverless service uses `serverless-dotenv-plugin` with `path: ../../../.env`, because the service config lives in `src/services/user-service`. `src/services/sls.defaults.ts` also loads the same `.env` before building resources and IAM statements. Shared AWS helpers load the root `.env` before creating SDK clients.
+
+## Infrastructure Resources
+
+DynamoDB tables are declared in each service under `__sls/tables.ts`, queues under `__sls/queues.ts`, topics under `__sls/topics.ts`, IAM permissions under `__sls/roles.ts`, and `__sls/resources.ts` exports `Resources` and `Outputs` for the service config.
+
+The shared `src/services/sls.defaults.ts` file owns common Serverless defaults through `SLS.serverless` (`frameworkVersion`, package settings, `custom`, base `provider`, and plugins). It also exposes `createDDB`, `createSQS`, `createSNS`, `genApiEndpoint`, ARN builders, and IAM statement flattening, so service configs stay small and consistent:
+
+```ts
+import Aws from 'serverless/aws';
+import * as SLS from '../../sls.defaults';
+import { USERS_TABLE } from './consts';
+
+const tables = {
+    Resources: {
+        ...SLS.createDDB({
+            name: USERS_TABLE,
+            key: [
+                { AttributeName: 'id', KeyType: 'HASH' },
+            ],
+        }),
+    },
+} as Aws.Resources;
+
+export default tables;
+```
+
+```ts
+import * as SLS from '../../sls.defaults';
+import { USERS_TABLE } from './consts';
+
+export default SLS.createIamRoleStatements({
+    userStore: {
+        read: {
+            Effect: 'Allow',
+            Action: ['dynamodb:GetItem', 'dynamodb:Query'],
+            Resource: [
+                SLS.makeDBArn(USERS_TABLE),
+                SLS.makeDBArn(USERS_TABLE, 'index/*'),
+            ],
+        },
+    },
+} satisfies SLS.IamRoleStatementGroup);
+```
+
+## Local AWS
+
+Start local SQS, SNS, and DynamoDB:
+
+```bash
+yarn local:aws:up
+```
+
+When `NODE_ENV=dev`, the AWS helpers automatically use LocalStack at `http://localhost:4566` with local credentials. You can override that endpoint with `LOCAL_AWS_ENDPOINT`.
+
+The sample queue, topic, and table are Serverless resources composed through `resources: { Resources: { ...Resources }, Outputs }` in `src/services/user-service/serverless.ts`. LocalStack only provides local AWS-compatible endpoints; it does not bootstrap resources through shell scripts.
+
+`SSMAuthServiceDomain` is generated with `SLS.genApiEndpoint('auth')` and stores the deployed API Gateway endpoint in SSM Parameter Store.
+
+In local mode, `sendQueueMessage` accepts either a full queue URL or a queue name, and `publishTopicMessage` accepts either a full topic ARN or a topic name.
+
+Local producer-to-consumer dispatch is controlled by `.env` maps:
+
+```bash
+LOCAL_SQS_EVENT_HANDLERS=user-events=testHandleQueueMessage
+LOCAL_SNS_EVENT_HANDLERS=user-events=testHandleTopicMessage
+```
+
+That means `testSendQueueMessage` sends to the local SQS queue and then immediately invokes `testHandleQueueMessage` with a generated `SQSEvent`. `testPublishTopicMessage` does the same for SNS.
+
+Run local smoke tests:
+
+```bash
+yarn sls:user-service:invoke \
+  --function testSendQueueMessage \
+  --path __test/send-sqs-event.json
+
+yarn sls:user-service:invoke \
+  --function testPublishTopicMessage \
+  --path __test/publish-sns-event.json
+
+yarn sls:user-service:invoke \
+  --function testHandleQueueMessage \
+  --path __test/sqs-event.json
+
+yarn sls:user-service:invoke \
+  --function testHandleTopicMessage \
+  --path __test/sns-event.json
+
+yarn sls:user-service:invoke \
+  --function apiUserLogin \
+  --path __test/event.json
+```
+
+`apiUserLogin` writes a login item into `USERS_TABLE_NAME` and reads it back before responding.
 
 ## Deploy
 
@@ -141,8 +276,90 @@ yarn sls:user-service remove \
 | Variable | Required | Used By | Description |
 | --- | --- | --- | --- |
 | `JWT_SECRET` | Yes | `src/authorizer.ts` | Secret used to verify bearer JWTs. |
-| `NODE_ENV` | Local only | `src/libs/invoke-function.lib.ts` | Set to `dev` to invoke resolvers locally with Serverless. |
-| `AWS_REGION` | AWS/runtime | AWS SDK Lambda client | Region used by the Lambda client. |
+| `NODE_ENV` | Local only | `src/libs/*` | Set to `dev` to use local Lambda resolver invocation and LocalStack-backed AWS clients. |
+| `STAGE` | Optional | `src/services/user-service/serverless.ts` | Serverless stage. Defaults to `dev`. |
+| `AWS_REGION` | AWS/runtime | AWS SDK clients | Region used by AWS clients. |
+| `AWS_DEFAULT_REGION` | Local optional | Docker and AWS-compatible tools | Default region used by local AWS tooling. |
+| `AWS_ACCOUNT_ID` | Local optional | `src/libs/aws-client-config.lib.ts` | Account id used to build local SQS URLs and SNS ARNs. Defaults to `000000000000`. |
+| `AWS_ACCESS_KEY_ID` | Local optional | AWS SDK clients | LocalStack access key. Defaults to `test` in dev. |
+| `AWS_SECRET_ACCESS_KEY` | Local optional | AWS SDK clients | LocalStack secret key. Defaults to `test` in dev. |
+| `LOCAL_AWS_ENDPOINT` | Local optional | `src/libs/aws-client-config.lib.ts` | Shared LocalStack endpoint. Defaults to `http://localhost:4566`. |
+| `SQS_ENDPOINT` | Optional | `src/libs/sqs.lib.ts` | Custom SQS-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for SQS. |
+| `SNS_ENDPOINT` | Optional | `src/libs/sns.lib.ts` | Custom SNS-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for SNS. |
+| `DYNAMODB_ENDPOINT` | Optional | `src/libs/dynamodb.lib.ts` | Custom DynamoDB-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for DynamoDB. |
+| `USER_EVENTS_QUEUE_NAME` | Example | SQS examples | Local queue name. |
+| `USER_EVENTS_QUEUE_URL` | Example | SQS examples | Full local queue URL. |
+| `USER_EVENTS_QUEUE_ARN` | Example | SQS examples | Full local queue ARN. |
+| `USER_EVENTS_TOPIC_NAME` | Example | SNS examples | Local topic name. |
+| `USER_EVENTS_TOPIC_ARN` | Example | SNS examples | Full local topic ARN. |
+| `USERS_TABLE_NAME` | Example | DynamoDB examples and `src/services/user-service/__sls/tables.ts` | DynamoDB table name. |
+| `LOCAL_SQS_EVENT_HANDLERS` | Local optional | `src/libs/sqs.lib.ts` | Comma-separated `queueName=functionName` map for local SQS dispatch. |
+| `LOCAL_SNS_EVENT_HANDLERS` | Local optional | `src/libs/sns.lib.ts` | Comma-separated `topicName=functionName` map for local SNS dispatch. |
+
+## AWS Helpers
+
+Send an SQS message:
+
+```ts
+import { sendQueueMessage } from '@lib/sqs.lib';
+
+await sendQueueMessage(process.env.USER_EVENTS_QUEUE_URL!, {
+    userId: 'user-id',
+    event: 'user.created',
+});
+```
+
+Publish an SNS message:
+
+```ts
+import { publishTopicMessage } from '@lib/sns.lib';
+
+await publishTopicMessage(process.env.USER_EVENTS_TOPIC_ARN!, {
+    userId: 'user-id',
+    event: 'user.created',
+});
+```
+
+Use DynamoDB with native JavaScript objects:
+
+```ts
+import { getItem, putItem } from '@lib/dynamodb.lib';
+
+await putItem(process.env.USERS_TABLE_NAME!, {
+    id: 'user-id',
+    email: 'user@example.com',
+});
+
+const user = await getItem(process.env.USERS_TABLE_NAME!, {
+    id: 'user-id',
+});
+```
+
+Create an SQS consumer:
+
+```ts
+import { sqsHandler } from '@lib/sqs-handler.lib';
+
+export const handler = sqsHandler<{ event: string }>(async ({ data, messageId }) => {
+    console.info('received sqs message', {
+        data,
+        messageId,
+    });
+});
+```
+
+Create an SNS consumer:
+
+```ts
+import { snsHandler } from '@lib/sns-handler.lib';
+
+export const handler = snsHandler<{ event: string }>(async ({ data, messageId }) => {
+    console.info('received sns message', {
+        data,
+        messageId,
+    });
+});
+```
 
 ## Request Flow
 
@@ -176,6 +393,8 @@ invokeCreateUser(...)
 - Keep API handlers focused on transport concerns.
 - Put business operations behind resolver Lambdas.
 - Keep shared Lambda utilities in `src/libs`.
+- Keep common Serverless defaults in `src/services/sls.defaults.ts`.
+- Keep service infrastructure resources and IAM permissions in `src/services/<service>/__sls`.
 - Keep stack and function names in `src/constants/service.const.ts`.
 - Use path aliases for stable imports instead of long relative paths.
 - Keep local test payloads in each service-local `__test` directory.
