@@ -6,7 +6,6 @@ import {
     DynamoDBDocumentClient,
     GetCommand,
     GetCommandInput,
-    NativeAttributeValue,
     PutCommand,
     PutCommandInput,
     PutCommandOutput,
@@ -17,13 +16,20 @@ import {
     UpdateCommand,
     UpdateCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import dynoexpr, { IDynoexprArgs } from '@tuplo/dynoexpr';
+import dynoexpr from '@tuplo/dynoexpr';
+import type { IDynoexprArgs } from '@tuplo/dynoexpr';
 import { getAwsClientConfig } from '@lib/aws-client-config.lib';
+import type {
+    DynamoExpressionOptions,
+    DynamoItem,
+    DynamoKey,
+} from '@lib/types/dynamodb.type';
 
-export type DynamoItem = Record<string, NativeAttributeValue>;
-export type DynamoKey = Record<string, NativeAttributeValue>;
-export type DynamoExpressionOptions<TOptions extends object> =
-    Omit<TOptions, 'TableName' | 'Key' | 'Item'> & IDynoexprArgs;
+export type {
+    DynamoExpressionOptions,
+    DynamoItem,
+    DynamoKey,
+} from '@lib/types/dynamodb.type';
 
 export const dynamoClient = new DynamoDBClient(getAwsClientConfig(process.env.DYNAMODB_ENDPOINT));
 

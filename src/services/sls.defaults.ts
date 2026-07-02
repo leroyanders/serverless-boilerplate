@@ -7,13 +7,22 @@ config({
 });
 
 import Aws from 'serverless/aws';
+import type {
+    CloudFormationResource,
+    CloudFormationResources,
+    CreateDDBConfig,
+    CreateSNSConfig,
+    CreateSQSConfig,
+    DynamoGsi,
+    DynamoKey,
+    IamRoleStatement,
+    IamRoleStatementGroup,
+} from './types/sls.type';
 
-type CloudFormationResources = Aws.Resources['Resources'];
-type CloudFormationResource = CloudFormationResources[string];
-export type IamRoleStatement = Aws.IamRoleStatement;
-export type IamRoleStatementGroup = {
-    [name: string]: IamRoleStatement | IamRoleStatementGroup;
-};
+export type {
+    IamRoleStatement,
+    IamRoleStatementGroup,
+} from './types/sls.type';
 
 export const frameworkVersion = '3';
 
@@ -60,38 +69,6 @@ export const serverless = {
     custom,
     provider,
     plugins,
-};
-
-type DynamoKey = {
-    AttributeName: string;
-    KeyType: 'HASH' | 'RANGE';
-};
-
-type DynamoGsi = {
-    IndexName: string;
-    KeySchema: DynamoKey[];
-    Projection?: {
-        ProjectionType: 'ALL' | 'KEYS_ONLY' | 'INCLUDE';
-        NonKeyAttributes?: string[];
-    };
-};
-
-type CreateDDBConfig = {
-    name: string;
-    key: DynamoKey[];
-    gsi?: DynamoGsi[];
-    resourceName?: string;
-};
-
-type CreateSQSConfig = {
-    name: string;
-    resourceName?: string;
-    visibilityTimeout?: number;
-};
-
-type CreateSNSConfig = {
-    name: string;
-    resourceName?: string;
 };
 
 const getRegion = (): string =>

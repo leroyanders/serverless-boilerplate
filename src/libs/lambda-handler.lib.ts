@@ -3,14 +3,8 @@ import {
     APIGatewayProxyResult,
     Context,
 } from 'aws-lambda';
-
-type LambdaResponse<TResponse = unknown> = Omit<APIGatewayProxyResult, 'body'> & {
-    body: TResponse;
-};
-
-type Handler<TRequest = unknown, TResponse = unknown> = (
-    request: LambdaRequest<TRequest>,
-) => Promise<LambdaResponse<TResponse>> | LambdaResponse<TResponse>;
+import type { LambdaContext } from '@lib/interfaces/lambda.interface';
+import type { Handler } from '@lib/types/lambda-handler.type';
 
 export const lambdaHandler =
     <TRequest = unknown, TResponse = unknown>(handler: Handler<TRequest, TResponse>) =>

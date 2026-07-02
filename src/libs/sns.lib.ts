@@ -1,5 +1,4 @@
 import {
-    MessageAttributeValue,
     PublishBatchCommand,
     PublishBatchCommandOutput,
     PublishBatchRequestEntry,
@@ -15,26 +14,27 @@ import {
     isDev,
 } from '@lib/aws-client-config.lib';
 import { invokeLocalFunction } from '@lib/serverless-local.lib';
+import type {
+    PublishTopicMessageOptions,
+} from '@lib/interfaces/sns.interface';
+import type {
+    PublishTopicEventsOptions,
+    PublishTopicJsonRequest,
+    TopicEventMessage,
+    TopicMessage,
+} from '@lib/types/sns.type';
 
 export const snsClient = new SNSClient(getAwsClientConfig(process.env.SNS_ENDPOINT));
 
-export type TopicMessage = string | number | boolean | null | object;
-export type TopicEventMessage<TEvent> = {
-    data: TEvent;
-    name: string;
-    source: string;
-};
-
-export interface PublishTopicMessageOptions {
-    localHandler?: string;
-    messageAttributes?: Record<string, MessageAttributeValue>;
-    messageDeduplicationId?: string;
-    messageGroupId?: string;
-    skipLocalDispatch?: boolean;
-    subject?: string;
-}
-
-export type PublishTopicEventsOptions = PublishTopicMessageOptions;
+export type {
+    PublishTopicMessageOptions,
+} from '@lib/interfaces/sns.interface';
+export type {
+    PublishTopicEventsOptions,
+    PublishTopicJsonRequest,
+    TopicEventMessage,
+    TopicMessage,
+} from '@lib/types/sns.type';
 
 const BATCH_SIZE = 10;
 
@@ -67,6 +67,14 @@ export const getTopicArn = (topicArnOrName: string): string => {
 const getTopicName = (topicArnOrName: string): string =>
     topicArnOrName.startsWith('arn:')
         ? topicArnOrName.split(':').pop() ?? topicArnOrName
+        : topicArnOrName;
+
+const getPublishTopicArn = (
+    topicArnOrName: string,
+    constructArn: boolean,
+): string =>
+    constructArn
+        ? getTopicArn(topicArnOrName)
         : topicArnOrName;
 
 const getLocalHandlerMap = (): Record<string, string> =>
@@ -205,7 +213,7 @@ export const publishTopicMessage = async <TMessage extends TopicMessage>(
     topicArnOrName: string,
     message: TMessage,
     options: PublishTopicMessageOptions = {},
-): Promise<PublishCommandOutput> => {
+): Promise<PublishCommandOutput | undefined> => {
     const topicMessage = toTopicMessage(message);
     const command = new PublishCommand({
         TopicArn: getTopicArn(topicArnOrName),
@@ -216,8 +224,41 @@ export const publishTopicMessage = async <TMessage extends TopicMessage>(
         Subject: options.subject,
     });
 
+    if (isDryRun()) {
+        return undefined;
+    }
+
     const response = await snsClient.send(command);
     await dispatchLocalTopicMessage(topicArnOrName, topicMessage, response, options);
+
+    return response;
+};
+
+export const publishSNS = async <TPayload extends TopicMessage>(
+    name: string,
+    data: TPayload,
+    Subject?: string,
+    constructArn: boolean = true,
+): Promise<PublishCommandOutput | undefined> => {
+    const topicMessage = toTopicMessage(data);
+    const topicArn = getPublishTopicArn(name, constructArn);
+    const command = new PublishCommand({
+        Message: topicMessage,
+        Subject,
+        TopicArn: topicArn,
+    });
+
+    console.debug('publishing sns to', name);
+    console.debug('arn', topicArn);
+    console.debug('p', command.input);
+
+    if (isDryRun()) {
+        return undefined;
+    }
+
+    const response = await snsClient.send(command);
+    console.debug('r', response);
+    await dispatchLocalTopicMessage(name, topicMessage, response, { subject: Subject });
 
     return response;
 };
@@ -280,7 +321,7 @@ export const getSNS = (topicArnOrName: string) => ({
     publish: <TMessage extends TopicMessage>(
         message: TMessage,
         options: PublishTopicMessageOptions = {},
-    ): Promise<PublishCommandOutput> =>
+    ): Promise<PublishCommandOutput | undefined> =>
         publishTopicMessage(topicArnOrName, message, options),
 
     publishEvents: <EventType>(

@@ -4,7 +4,7 @@
   "headers": {},
   "queryStringParameters": {},
   "pathParameters": {},
-  "body": "{\"subject\":\"local sns test\",\"payload\":{\"event\":\"fixture.sns.publish\",\"message\":\"hello from sns fixture\"}}",
+  "body": "{\"topic\":\"user-events\",\"payload\":{\"event\":\"fixture.sns.publish\",\"message\":\"hello from sns fixture\"}}",
   "requestContext": {
     "authorizer": {
       "userId": "local-user-id"

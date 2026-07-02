@@ -1,7 +1,9 @@
-import {
+import type {
     SumResolverArgType,
+} from '../../interfaces/sum-resolver-arg.interface';
+import type {
     SumResolverReturnType,
-} from '../../types';
+} from '../../interfaces/sum-resolver-return.interface';
 
 export const handler = async (
     params: SumResolverArgType,

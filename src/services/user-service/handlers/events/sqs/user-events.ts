@@ -1,9 +1,5 @@
 import { sqsHandler } from '@lib/sqs-handler.lib';
-
-interface UserQueueEvent {
-    event: string;
-    message: string;
-}
+import type { UserQueueEvent } from '../../../interfaces/user-queue-event.interface';
 
 export const handler = sqsHandler<UserQueueEvent>(({ data, messageId }) => {
     console.info('received sqs message', {

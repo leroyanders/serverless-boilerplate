@@ -40,10 +40,3 @@ export const USERS_TABLE_DEFAULT = 'users';
 export const USER_EVENTS_QUEUE_DEFAULT = 'user-events';
 export const USER_EVENTS_TOPIC_DEFAULT = 'user-events';
 export const DEFAULT_LOCAL_USER_ID = 'local-user-id';
-
-// Test events
-export const TEST_SQS_EVENT_NAME = 'test.sqs.message';
-export const TEST_SNS_EVENT_NAME = 'test.sns.message';
-export const TEST_SQS_DEFAULT_MESSAGE = 'hello from sqs test lambda';
-export const TEST_SNS_DEFAULT_MESSAGE = 'hello from sns test lambda';
-export const TEST_SNS_DEFAULT_SUBJECT = 'local sns test';

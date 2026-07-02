@@ -4,27 +4,13 @@ import {
 } from '@constants/service.const';
 import { lambdaHandler } from '@lib/lambda-handler.lib';
 import { invokeSum } from '../../invokers/sum.invoker';
-import status from 'http-status-codes';
-import type { SumResolverReturnType } from '../../../types';
 import { getDB } from '@lib/dynamodb.lib';
 
-type LoginRequest = Record<string, unknown>;
+import type { LoginResponse } from '../../../interfaces/login-response.interface';
+import type { LoginUserItem } from '../../../interfaces/login-user-item.interface';
+import type { LoginRequest } from '../../../types';
 
-interface LoginResponse {
-    data: LoginRequest;
-    userId?: string;
-    sum: SumResolverReturnType;
-    user: LoginUserItem | undefined;
-    tableName: string;
-}
-
-interface LoginUserItem {
-    pk: string;
-    userId: string;
-    lastLoginAt: string;
-    data: LoginRequest;
-    sum: SumResolverReturnType;
-}
+import status from 'http-status-codes';
 
 export const handler = lambdaHandler<LoginRequest, LoginResponse>(async ({ data, ctx }) => {
     const sum = await invokeSum({

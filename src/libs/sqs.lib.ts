@@ -1,5 +1,4 @@
 import {
-    MessageAttributeValue,
     SendMessageBatchCommand,
     SendMessageBatchCommandOutput,
     SendMessageBatchRequestEntry,
@@ -7,6 +6,7 @@ import {
     SendMessageCommandOutput,
     SQSClient,
 } from '@aws-sdk/client-sqs';
+import { createHash } from 'crypto';
 import type { SQSEvent } from 'aws-lambda';
 import {
     getAwsAccountId,
@@ -16,26 +16,25 @@ import {
     isDev,
 } from '@lib/aws-client-config.lib';
 import { invokeLocalFunction } from '@lib/serverless-local.lib';
+import type {
+    SendQueueMessageOptions,
+} from '@lib/interfaces/sqs.interface';
+import type {
+    PublishQueueEventsOptions,
+    QueueEventMessage,
+    QueueMessage,
+} from '@lib/types/sqs.type';
 
 export const sqsClient = new SQSClient(getAwsClientConfig(process.env.SQS_ENDPOINT));
 
-export type QueueMessage = string | number | boolean | null | object;
-export type QueueEventMessage<TEvent> = {
-    data: TEvent;
-    name: string;
-    source: string;
-};
-
-export interface SendQueueMessageOptions {
-    delaySeconds?: number;
-    localHandler?: string;
-    messageAttributes?: Record<string, MessageAttributeValue>;
-    messageDeduplicationId?: string;
-    messageGroupId?: string;
-    skipLocalDispatch?: boolean;
-}
-
-export type PublishQueueEventsOptions = SendQueueMessageOptions;
+export type {
+    SendQueueMessageOptions,
+} from '@lib/interfaces/sqs.interface';
+export type {
+    PublishQueueEventsOptions,
+    QueueEventMessage,
+    QueueMessage,
+} from '@lib/types/sqs.type';
 
 const BATCH_SIZE = 10;
 
@@ -60,8 +59,21 @@ const toMessageBody = <TMessage extends QueueMessage>(message: TMessage): string
 const trimTrailingSlash = (value: string): string =>
     value.replace(/\/+$/, '');
 
+const md5 = (value: string): string =>
+    createHash('md5').update(value).digest('hex');
+
+const pascalCase = (value: string): string =>
+    value
+        .split(/[^a-zA-Z0-9]/)
+        .filter(Boolean)
+        .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+        .join('');
+
 const getSqsEndpoint = (): string =>
     process.env.SQS_ENDPOINT ?? getLocalAwsEndpoint();
+
+const getStage = (): string =>
+    process.env.STAGE ?? 'dev';
 
 const getQueueName = (queueUrlOrName: string): string =>
     queueUrlOrName.startsWith('http')
@@ -78,6 +90,28 @@ export const getQueueUrl = (queueUrlOrName: string): string => {
 
 export const getQueueArn = (queueUrlOrName: string): string =>
     `arn:aws:sqs:${getAwsRegion()}:${getAwsAccountId()}:${getQueueName(queueUrlOrName)}`;
+
+const getConstructedQueueUrl = (
+    name: string,
+    fifo: boolean,
+): string => {
+    if (name.startsWith('http') || isDev) {
+        return getQueueUrl(name);
+    }
+
+    return `https://sqs.${process.env.REGION ?? getAwsRegion()}.amazonaws.com/${
+        process.env.AWS_ID ?? getAwsAccountId()
+    }/${pascalCase(name)}Queue-${getStage()}${fifo ? '.fifo' : ''}`;
+};
+
+const getSendQueueUrl = (
+    name: string,
+    fifo: boolean,
+    constructUrl: boolean,
+): string =>
+    constructUrl
+        ? getConstructedQueueUrl(name, fifo)
+        : name;
 
 const getLocalHandlerMap = (): Record<string, string> =>
     (process.env.LOCAL_SQS_EVENT_HANDLERS ?? '')
@@ -212,7 +246,7 @@ export const sendQueueMessage = async <TMessage extends QueueMessage>(
     queueUrlOrName: string,
     message: TMessage,
     options: SendQueueMessageOptions = {},
-): Promise<SendMessageCommandOutput> => {
+): Promise<SendMessageCommandOutput | undefined> => {
     const body = toMessageBody(message);
     const command = new SendMessageCommand({
         QueueUrl: getQueueUrl(queueUrlOrName),
@@ -223,8 +257,56 @@ export const sendQueueMessage = async <TMessage extends QueueMessage>(
         MessageGroupId: options.messageGroupId,
     });
 
+    if (isDryRun()) {
+        return undefined;
+    }
+
     const response = await sqsClient.send(command);
     await dispatchLocalQueueMessage(queueUrlOrName, body, response, options);
+
+    return response;
+};
+
+export const sendMessage = async <TMessage extends QueueMessage = string>(
+    name: string,
+    data: TMessage,
+    MessageGroupId?: string,
+    fifo: boolean = false,
+    constructUrl: boolean = true,
+): Promise<SendMessageCommandOutput | undefined> => {
+    const body = toMessageBody(data);
+    const queueUrl = getSendQueueUrl(name, fifo, constructUrl);
+    const command = new SendMessageCommand({
+        QueueUrl: queueUrl,
+        MessageBody: body,
+        MessageGroupId,
+        ...(fifo
+            ? {
+                MessageDeduplicationId: md5(JSON.stringify(data)),
+            }
+            : {}),
+        ...((!process.env.IS_LOCAL && process.env._X_AMZN_TRACE_ID && {
+            MessageSystemAttributes: {
+                AWSTraceHeader: {
+                    DataType: 'String',
+                    StringValue: process.env._X_AMZN_TRACE_ID,
+                },
+            },
+        })
+            || {}),
+    });
+
+    console.debug('queueing message to', name);
+    console.debug('url', queueUrl);
+    console.debug('p', command.input);
+
+    if (isDryRun()) {
+        return undefined;
+    }
+
+    const response = await sqsClient.send(command);
+    console.debug('r', response);
+    await dispatchLocalQueueMessage(name, body, response, {});
 
     return response;
 };
@@ -283,6 +365,59 @@ export const publishQueueEvents = async <EventType>(
     return responses;
 };
 
+export const sendBatchMessage = async <TMessage extends QueueMessage>(
+    name: string,
+    data: TMessage[],
+    MessageGroupId?: string,
+    fifo: boolean = false,
+    constructUrl: boolean = true,
+): Promise<SendMessageBatchCommandOutput[]> => {
+    console.debug('queueing batch to', { name, MessageGroupId });
+    console.debug('sendBatchMessage::data', data);
+
+    const entries = data.map((message, index): SendMessageBatchRequestEntry => ({
+        Id: `b${index.toString()}`,
+        MessageBody: toMessageBody(message),
+        MessageGroupId,
+        ...(fifo
+            ? {
+                MessageDeduplicationId: md5(JSON.stringify(message)),
+            }
+            : {}),
+        ...((!process.env.IS_LOCAL && process.env._X_AMZN_TRACE_ID && {
+            MessageSystemAttributes: {
+                AWSTraceHeader: {
+                    DataType: 'String',
+                    StringValue: process.env._X_AMZN_TRACE_ID,
+                },
+            },
+        })
+            || {}),
+    }));
+    const queueUrl = getSendQueueUrl(name, fifo, constructUrl);
+    const responses: SendMessageBatchCommandOutput[] = [];
+
+    console.debug('url', queueUrl);
+
+    if (isDryRun()) {
+        return responses;
+    }
+
+    do {
+        const batch = entries.splice(0, BATCH_SIZE);
+        const response = await sqsClient.send(new SendMessageBatchCommand({
+            Entries: batch,
+            QueueUrl: queueUrl,
+        }));
+
+        console.debug('r', response);
+        await dispatchLocalQueueBatch(name, batch, response, {});
+        responses.push(response);
+    } while (entries.length);
+
+    return responses;
+};
+
 export const getSQS = (queueUrlOrName: string) => ({
     publishEvents: <EventType>(
         source: string,
@@ -295,6 +430,6 @@ export const getSQS = (queueUrlOrName: string) => ({
     send: <TMessage extends QueueMessage>(
         message: TMessage,
         options: SendQueueMessageOptions = {},
-    ): Promise<SendMessageCommandOutput> =>
+    ): Promise<SendMessageCommandOutput | undefined> =>
         sendQueueMessage(queueUrlOrName, message, options),
 });

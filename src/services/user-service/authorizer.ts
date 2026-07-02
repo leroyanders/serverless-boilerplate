@@ -3,12 +3,12 @@ import {
     APIGatewaySimpleAuthorizerWithContextResult,
 } from 'aws-lambda';
 import jwt from 'jsonwebtoken';
+import type { AuthorizerContext } from './interfaces/authorizer-context.interface';
+import type { JwtPayload } from './interfaces/jwt.interface';
 
 export const handler = async (
     event: APIGatewayRequestAuthorizerEventV2,
-): Promise<APIGatewaySimpleAuthorizerWithContextResult<{
-    userId: string;
-}>> => {
+): Promise<APIGatewaySimpleAuthorizerWithContextResult<AuthorizerContext>> => {
     try {
         const token = event.headers?.authorization?.replace(/^Bearer\s+/i, '');
 

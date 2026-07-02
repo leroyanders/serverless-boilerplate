@@ -1,19 +1,10 @@
 import type {
     SNSEvent,
-    SNSEventRecord,
 } from 'aws-lambda';
+import type { TopicHandler } from '@lib/types/sns-handler.type';
 
-interface TopicRecord<TMessage = unknown> {
-    data: TMessage;
-    messageId: string;
-    rawRecord: SNSEventRecord;
-    subject?: string;
-    topicArn: string;
-}
-
-type TopicHandler<TMessage = unknown, TResult = void> = (
-    record: TopicRecord<TMessage>,
-) => Promise<TResult> | TResult;
+export type { TopicRecord } from '@lib/interfaces/sns-handler.interface';
+export type { TopicHandler } from '@lib/types/sns-handler.type';
 
 const parseTopicMessage = <TMessage = unknown>(message: string): TMessage => {
     try {

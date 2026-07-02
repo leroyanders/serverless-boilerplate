@@ -1,16 +1,6 @@
 import { snsHandler } from '@lib/sns-handler.lib';
-
-interface HandledTopicRecord {
-    message: unknown;
-    messageId: string;
-    subject?: string;
-    topicArn: string;
-}
-
-interface UserTopicEvent {
-    event: string;
-    message: string;
-}
+import type { HandledTopicRecord } from '../../../interfaces/handled-topic-record.interface';
+import type { UserTopicEvent } from '../../../interfaces/user-topic-event.interface';
 
 export const handler = snsHandler<UserTopicEvent, HandledTopicRecord>(({ data, messageId, subject, topicArn }) => {
     console.info('received sns message', {

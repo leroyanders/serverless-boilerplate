@@ -1,9 +1,11 @@
 import { invokeFunction } from '@lib/invoke-function.lib';
-import {
+import type {
     SumResolverArgType,
+} from '../../interfaces/sum-resolver-arg.interface';
+import type {
     SumResolverReturnType,
-} from '../../types';
-import { INVOKE_SUM_RESOLVER_FN, SERVERLESS_USER_STACK } from "@constants/service.const";
+} from '../../interfaces/sum-resolver-return.interface';
+import { INVOKE_SUM_RESOLVER_FN, SERVERLESS_USER_STACK } from '@constants/service.const';
 
 export const invokeSum = async (
     params: SumResolverArgType,

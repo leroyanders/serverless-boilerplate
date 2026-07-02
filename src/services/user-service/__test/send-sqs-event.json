@@ -4,7 +4,7 @@
   "headers": {},
   "queryStringParameters": {},
   "pathParameters": {},
-  "body": "{\"payload\":{\"event\":\"fixture.sqs.send\",\"message\":\"hello from sqs fixture\"}}",
+  "body": "{\"queue\":\"user-events\",\"payload\":{\"event\":\"fixture.sqs.send\",\"message\":\"hello from sqs fixture\"}}",
   "requestContext": {
     "authorizer": {
       "userId": "local-user-id"

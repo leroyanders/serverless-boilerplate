@@ -1,18 +1,11 @@
 import type {
     SQSBatchResponse,
     SQSEvent,
-    SQSRecord,
 } from 'aws-lambda';
+import type { QueueHandler } from '@lib/types/sqs-handler.type';
 
-interface QueueRecord<TMessage = unknown> {
-    data: TMessage;
-    messageId: string;
-    rawRecord: SQSRecord;
-}
-
-type QueueHandler<TMessage = unknown> = (
-    record: QueueRecord<TMessage>,
-) => Promise<void> | void;
+export type { QueueRecord } from '@lib/interfaces/sqs-handler.interface';
+export type { QueueHandler } from '@lib/types/sqs-handler.type';
 
 const parseQueueMessage = <TMessage = unknown>(body: string): TMessage => {
     try {

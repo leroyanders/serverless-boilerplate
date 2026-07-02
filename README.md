@@ -302,30 +302,30 @@ yarn sls:user-service remove \
 Publish SQS events:
 
 ```ts
-import { SERVERLESS_SERVICE_NAME } from '@constants/service.const';
-import { getSQS } from '@lib/sqs.lib';
+import { sendMessage } from '@lib/sqs.lib';
 
-await getSQS(process.env.USER_EVENTS_QUEUE_URL!).publishEvents(SERVERLESS_SERVICE_NAME, 'user.created', [
+await sendMessage(
+    process.env.USER_EVENTS_QUEUE_URL!,
     {
         userId: 'user-id',
     },
-]);
+);
 ```
 
 Publish SNS events:
 
 ```ts
-import { SERVERLESS_SERVICE_NAME } from '@constants/service.const';
-import { getSNS } from '@lib/sns.lib';
+import { publishSNS } from '@lib/sns.lib';
 
-await getSNS(process.env.USER_EVENTS_TOPIC_ARN!).publishEvents(SERVERLESS_SERVICE_NAME, 'user.created', [
+await publishSNS(
+    process.env.USER_EVENTS_TOPIC_ARN!,
     {
         userId: 'user-id',
     },
-]);
+);
 ```
 
-`publishEvents` chunks messages into AWS batch requests of 10 records and skips publishing when `DRY_RUN=true`.
+`sendMessage` and `publishSNS` publish one JSON payload to the provided queue or topic and still dispatch local handlers in dev mode. `sendBatchMessage` remains available for SQS batch publishing and chunks messages into AWS requests of 10 records.
 
 Use DynamoDB with native JavaScript objects and `dynoexpr` builders:
 
