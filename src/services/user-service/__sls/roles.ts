@@ -33,7 +33,7 @@ export default SLS.createIamRoleStatements({
     userEventsQueue: {
         send: {
             Effect: 'Allow',
-            Action: ['sqs:SendMessage'],
+            Action: ['sqs:SendMessage', 'sqs:SendMessageBatch'],
             Resource: SLS.makeSQSArn(USER_EVENTS_QUEUE),
         },
         consume: {
@@ -49,7 +49,7 @@ export default SLS.createIamRoleStatements({
     userEventsTopic: {
         publish: {
             Effect: 'Allow',
-            Action: ['sns:Publish'],
+            Action: ['sns:Publish', 'sns:PublishBatch'],
             Resource: SLS.makeSNSArn(USER_EVENTS_TOPIC),
         },
     },

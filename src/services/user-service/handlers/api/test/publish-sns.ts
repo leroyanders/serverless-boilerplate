@@ -1,7 +1,7 @@
 import status from 'http-status-codes';
 import { lambdaHandler } from '@lib/lambda-handler.lib';
 import {
-    publishTopicMessage,
+    getSNS,
     TopicMessage,
 } from '@lib/sns.lib';
 
@@ -15,6 +15,7 @@ type PublishSnsTestRequest = {
 
 interface PublishSnsTestResponse {
     messageId?: string;
+    messageIds: string[];
     topic: string;
     payload: TopicMessage;
 }
@@ -40,14 +41,24 @@ const getTopic = (data: PublishSnsTestRequest): string =>
 export const handler = lambdaHandler<PublishSnsTestRequest, PublishSnsTestResponse>(async ({ data, ctx }) => {
     const topic = getTopic(data);
     const payload = getPayload(data, ctx.userId);
-    const response = await publishTopicMessage(topic, payload, {
+    const responses = await getSNS(topic).publishEvents('user-service', 'test.sns.message', [payload], {
         subject: data.subject ?? 'local sns test',
     });
+    const messageIds = responses.reduce<string[]>((result, response) => {
+        for (const item of response.Successful ?? []) {
+            if (item.MessageId) {
+                result.push(item.MessageId);
+            }
+        }
+
+        return result;
+    }, []);
 
     return {
         statusCode: status.OK,
         body: {
-            messageId: response.MessageId,
+            messageId: messageIds[0],
+            messageIds,
             topic,
             payload,
         },

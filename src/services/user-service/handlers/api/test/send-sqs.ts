@@ -1,8 +1,8 @@
 import status from 'http-status-codes';
 import { lambdaHandler } from '@lib/lambda-handler.lib';
 import {
+    getSQS,
     QueueMessage,
-    sendQueueMessage,
 } from '@lib/sqs.lib';
 
 type SendSqsTestRequest = {
@@ -14,6 +14,7 @@ type SendSqsTestRequest = {
 
 interface SendSqsTestResponse {
     messageId?: string;
+    messageIds: string[];
     queue: string;
     payload: QueueMessage;
 }
@@ -39,12 +40,22 @@ const getQueue = (data: SendSqsTestRequest): string =>
 export const handler = lambdaHandler<SendSqsTestRequest, SendSqsTestResponse>(async ({ data, ctx }) => {
     const queue = getQueue(data);
     const payload = getPayload(data, ctx.userId);
-    const response = await sendQueueMessage(queue, payload);
+    const responses = await getSQS(queue).publishEvents('user-service', 'test.sqs.message', [payload]);
+    const messageIds = responses.reduce<string[]>((result, response) => {
+        for (const item of response.Successful ?? []) {
+            if (item.MessageId) {
+                result.push(item.MessageId);
+            }
+        }
+
+        return result;
+    }, []);
 
     return {
         statusCode: status.OK,
         body: {
-            messageId: response.MessageId,
+            messageId: messageIds[0],
+            messageIds,
             queue,
             payload,
         },

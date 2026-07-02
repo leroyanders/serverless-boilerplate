@@ -2,7 +2,7 @@ import { lambdaHandler } from '@lib/lambda-handler.lib';
 import { invokeSum } from '../../invokers/sum.invoker';
 import status from 'http-status-codes';
 import type { SumResolverReturnType } from '../../../types';
-import { getItem, putItem } from '@lib/dynamodb.lib';
+import { getDB } from '@lib/dynamodb.lib';
 
 type LoginRequest = Record<string, unknown>;
 
@@ -41,8 +41,10 @@ export const handler = lambdaHandler<LoginRequest, LoginResponse>(async ({ data,
         sum,
     };
 
-    await putItem(tableName, item);
-    const user = await getItem<LoginUserItem>(tableName, {
+    const db = getDB(tableName);
+
+    await db.put(item);
+    const user = await db.get<LoginUserItem>({
         pk: userId,
     });
 

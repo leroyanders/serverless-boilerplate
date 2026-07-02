@@ -216,7 +216,7 @@ The sample queue, topic, and table are Serverless resources composed through `re
 
 `SSMAuthServiceDomain` is generated with `SLS.genApiEndpoint('auth')` and stores the deployed API Gateway endpoint in SSM Parameter Store.
 
-In local mode, `sendQueueMessage` accepts either a full queue URL or a queue name, and `publishTopicMessage` accepts either a full topic ARN or a topic name.
+In local mode, `getSQS` accepts either a full queue URL or a queue name, and `getSNS` accepts either a full topic ARN or a topic name.
 
 Local producer-to-consumer dispatch is controlled by `.env` maps:
 
@@ -287,6 +287,7 @@ yarn sls:user-service remove \
 | `SQS_ENDPOINT` | Optional | `src/libs/sqs.lib.ts` | Custom SQS-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for SQS. |
 | `SNS_ENDPOINT` | Optional | `src/libs/sns.lib.ts` | Custom SNS-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for SNS. |
 | `DYNAMODB_ENDPOINT` | Optional | `src/libs/dynamodb.lib.ts` | Custom DynamoDB-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for DynamoDB. |
+| `DRY_RUN` | Optional | SQS and SNS publishers | Set to `true` or `1` to skip batch publishing. |
 | `USER_EVENTS_QUEUE_NAME` | Example | SQS examples | Local queue name. |
 | `USER_EVENTS_QUEUE_URL` | Example | SQS examples | Full local queue URL. |
 | `USER_EVENTS_QUEUE_ARN` | Example | SQS examples | Full local queue ARN. |
@@ -298,34 +299,40 @@ yarn sls:user-service remove \
 
 ## AWS Helpers
 
-Send an SQS message:
+Publish SQS events:
 
 ```ts
-import { sendQueueMessage } from '@lib/sqs.lib';
+import { getSQS } from '@lib/sqs.lib';
 
-await sendQueueMessage(process.env.USER_EVENTS_QUEUE_URL!, {
-    userId: 'user-id',
-    event: 'user.created',
-});
+await getSQS(process.env.USER_EVENTS_QUEUE_URL!).publishEvents('user-service', 'user.created', [
+    {
+        userId: 'user-id',
+    },
+]);
 ```
 
-Publish an SNS message:
+Publish SNS events:
 
 ```ts
-import { publishTopicMessage } from '@lib/sns.lib';
+import { getSNS } from '@lib/sns.lib';
 
-await publishTopicMessage(process.env.USER_EVENTS_TOPIC_ARN!, {
-    userId: 'user-id',
-    event: 'user.created',
-});
+await getSNS(process.env.USER_EVENTS_TOPIC_ARN!).publishEvents('user-service', 'user.created', [
+    {
+        userId: 'user-id',
+    },
+]);
 ```
+
+`publishEvents` chunks messages into AWS batch requests of 10 records and skips publishing when `DRY_RUN=true`.
 
 Use DynamoDB with native JavaScript objects and `dynoexpr` builders:
 
 ```ts
-import { getItem, putItem, updateItem } from '@lib/dynamodb.lib';
+import { getDB } from '@lib/dynamodb.lib';
 
-await putItem(process.env.USERS_TABLE_NAME!, {
+const db = getDB(process.env.USERS_TABLE_NAME!);
+
+await db.put({
     pk: 'user-id',
     email: 'user@example.com',
 }, {
@@ -334,13 +341,13 @@ await putItem(process.env.USERS_TABLE_NAME!, {
     },
 });
 
-const user = await getItem(process.env.USERS_TABLE_NAME!, {
+const user = await db.get({
     pk: 'user-id',
 }, {
     Projection: ['pk', 'email'],
 });
 
-await updateItem(process.env.USERS_TABLE_NAME!, {
+await db.update({
     pk: 'user-id',
 }, {
     Update: {

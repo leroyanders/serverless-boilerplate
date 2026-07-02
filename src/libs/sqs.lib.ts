@@ -1,5 +1,8 @@
 import {
     MessageAttributeValue,
+    SendMessageBatchCommand,
+    SendMessageBatchCommandOutput,
+    SendMessageBatchRequestEntry,
     SendMessageCommand,
     SendMessageCommandOutput,
     SQSClient,
@@ -17,6 +20,11 @@ import { invokeLocalFunction } from '@lib/serverless-local.lib';
 export const sqsClient = new SQSClient(getAwsClientConfig(process.env.SQS_ENDPOINT));
 
 export type QueueMessage = string | number | boolean | null | object;
+export type QueueEventMessage<TEvent> = {
+    data: TEvent;
+    name: string;
+    source: string;
+};
 
 export interface SendQueueMessageOptions {
     delaySeconds?: number;
@@ -26,6 +34,23 @@ export interface SendQueueMessageOptions {
     messageGroupId?: string;
     skipLocalDispatch?: boolean;
 }
+
+export type PublishQueueEventsOptions = SendQueueMessageOptions;
+
+const BATCH_SIZE = 10;
+
+const isDryRun = (): boolean =>
+    ['1', 'true'].includes((process.env.DRY_RUN ?? '').toLowerCase());
+
+const chunkItems = <TItem>(items: TItem[], size: number): TItem[][] => {
+    const result: TItem[][] = [];
+
+    for (let index = 0; index < items.length; index += size) {
+        result.push(items.slice(index, index + size));
+    }
+
+    return result;
+};
 
 const toMessageBody = <TMessage extends QueueMessage>(message: TMessage): string =>
     typeof message === 'string'
@@ -75,32 +100,62 @@ const getLocalQueueHandler = (
 ): string | undefined =>
     localHandler ?? getLocalHandlerMap()[getQueueName(queueUrlOrName)];
 
+const createQueueRecord = (
+    queueUrlOrName: string,
+    body: string,
+    messageId?: string,
+    md5OfBody?: string,
+): SQSEvent['Records'][number] => {
+    const now = Date.now().toString();
+
+    return {
+        messageId: messageId ?? `local-sqs-${now}`,
+        receiptHandle: 'local-receipt-handle',
+        body,
+        attributes: {
+            ApproximateReceiveCount: '1',
+            SentTimestamp: now,
+            SenderId: 'localstack',
+            ApproximateFirstReceiveTimestamp: now,
+        },
+        messageAttributes: {},
+        md5OfBody: md5OfBody ?? '',
+        eventSource: 'aws:sqs',
+        eventSourceARN: getQueueArn(queueUrlOrName),
+        awsRegion: getAwsRegion(),
+    };
+};
+
 const createQueueEvent = (
     queueUrlOrName: string,
     body: string,
     response: SendMessageCommandOutput,
+): SQSEvent => ({
+    Records: [
+        createQueueRecord(queueUrlOrName, body, response.MessageId, response.MD5OfMessageBody),
+    ],
+});
+
+const createQueueBatchEvent = (
+    queueUrlOrName: string,
+    entries: SendMessageBatchRequestEntry[],
+    response: SendMessageBatchCommandOutput,
 ): SQSEvent => {
-    const now = Date.now().toString();
+    const successful = new Map((response.Successful ?? []).map((item) => [item.Id, item]));
 
     return {
-        Records: [
-            {
-                messageId: response.MessageId ?? `local-sqs-${now}`,
-                receiptHandle: 'local-receipt-handle',
-                body,
-                attributes: {
-                    ApproximateReceiveCount: '1',
-                    SentTimestamp: now,
-                    SenderId: 'localstack',
-                    ApproximateFirstReceiveTimestamp: now,
-                },
-                messageAttributes: {},
-                md5OfBody: response.MD5OfMessageBody ?? '',
-                eventSource: 'aws:sqs',
-                eventSourceARN: getQueueArn(queueUrlOrName),
-                awsRegion: getAwsRegion(),
-            },
-        ],
+        Records: entries
+            .filter(({ Id }) => successful.has(Id))
+            .map((entry) => {
+                const result = successful.get(entry.Id);
+
+                return createQueueRecord(
+                    queueUrlOrName,
+                    entry.MessageBody ?? '',
+                    result?.MessageId,
+                    result?.MD5OfMessageBody,
+                );
+            }),
     };
 };
 
@@ -128,6 +183,31 @@ const dispatchLocalQueueMessage = async (
     });
 };
 
+const dispatchLocalQueueBatch = async (
+    queueUrlOrName: string,
+    entries: SendMessageBatchRequestEntry[],
+    response: SendMessageBatchCommandOutput,
+    options: PublishQueueEventsOptions,
+): Promise<void> => {
+    if (!isDev || options.skipLocalDispatch) {
+        return;
+    }
+
+    const handler = getLocalQueueHandler(queueUrlOrName, options.localHandler);
+    if (!handler) {
+        return;
+    }
+
+    const output = await invokeLocalFunction(handler, createQueueBatchEvent(queueUrlOrName, entries, response));
+
+    console.info('locally dispatched sqs events', {
+        handler,
+        output,
+        queue: getQueueName(queueUrlOrName),
+        records: entries.length,
+    });
+};
+
 export const sendQueueMessage = async <TMessage extends QueueMessage>(
     queueUrlOrName: string,
     message: TMessage,
@@ -148,3 +228,73 @@ export const sendQueueMessage = async <TMessage extends QueueMessage>(
 
     return response;
 };
+
+export const publishQueueEvents = async <EventType>(
+    queueUrlOrName: string,
+    source: string,
+    name: string,
+    data: EventType[],
+    options: PublishQueueEventsOptions = {},
+): Promise<SendMessageBatchCommandOutput[]> => {
+    const responses: SendMessageBatchCommandOutput[] = [];
+    const batches = chunkItems(data, BATCH_SIZE);
+
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
+        const batch = batches[batchIndex];
+        const entries = batch.map((event: EventType, index: number): SendMessageBatchRequestEntry => {
+            const entryIndex = (batchIndex * BATCH_SIZE) + index;
+
+            return {
+                Id: `event-${entryIndex}`,
+                MessageBody: toMessageBody<QueueEventMessage<EventType>>({
+                    data: event,
+                    name,
+                    source,
+                }),
+                DelaySeconds: options.delaySeconds,
+                MessageAttributes: options.messageAttributes,
+                MessageDeduplicationId: options.messageDeduplicationId
+                    ? `${options.messageDeduplicationId}-${entryIndex}`
+                    : undefined,
+                MessageGroupId: options.messageGroupId,
+            };
+        });
+
+        console.debug('publish sqs events', {
+            entries,
+            name,
+            queue: getQueueName(queueUrlOrName),
+            source,
+        });
+
+        if (isDryRun()) {
+            continue;
+        }
+
+        const response = await sqsClient.send(new SendMessageBatchCommand({
+            Entries: entries,
+            QueueUrl: getQueueUrl(queueUrlOrName),
+        }));
+
+        await dispatchLocalQueueBatch(queueUrlOrName, entries, response, options);
+        responses.push(response);
+    }
+
+    return responses;
+};
+
+export const getSQS = (queueUrlOrName: string) => ({
+    publishEvents: <EventType>(
+        source: string,
+        name: string,
+        data: EventType[],
+        options: PublishQueueEventsOptions = {},
+    ): Promise<SendMessageBatchCommandOutput[]> =>
+        publishQueueEvents(queueUrlOrName, source, name, data, options),
+
+    send: <TMessage extends QueueMessage>(
+        message: TMessage,
+        options: SendQueueMessageOptions = {},
+    ): Promise<SendMessageCommandOutput> =>
+        sendQueueMessage(queueUrlOrName, message, options),
+});
