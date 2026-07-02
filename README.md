@@ -77,7 +77,7 @@ The API handler stays thin: it receives normalized request data, reads authentic
 │           │   ├── api
 │           │   │   ├── test
 │           │   │   │   ├── publish-sns.ts
-│           │   │   │   └── send-sqs.ts
+│           │   │   │   └── publish-sqs.ts
 │           │   │   └── user
 │           │   │       └── login.ts
 │           │   ├── events
