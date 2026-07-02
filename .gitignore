@@ -1,0 +1,45 @@
+# dependencies
+node_modules/
+
+# serverless build and deploy artifacts
+.serverless/
+.esbuild/
+
+# typescript / build output
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# test and coverage output
+coverage/
+.nyc_output/
+
+# logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# environment and local secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# package manager caches
+.npm/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# os and editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo

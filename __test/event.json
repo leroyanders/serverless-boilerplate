@@ -1,0 +1,16 @@
+{
+  "httpMethod": "GET",
+  "path": "/",
+  "headers": {},
+  "queryStringParameters": {
+    "a": "10",
+    "b": "25"
+  },
+  "pathParameters": {},
+  "body": null,
+  "requestContext": {
+    "authorizer": {
+      "userId": "local-user-id"
+    }
+  }
+}
