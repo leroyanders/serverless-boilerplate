@@ -1,5 +1,6 @@
 import {
     DEFAULT_LOCAL_USER_ID,
+    USER_LOGIN_SK,
     USERS_TABLE_DEFAULT,
 } from '@constants/service.const';
 import { lambdaHandler } from '@lib/lambda-handler.lib';
@@ -25,6 +26,7 @@ export const handler = lambdaHandler<LoginRequest, LoginResponse>(async ({ data,
 
     const item: LoginUserItem = {
         pk: userId,
+        sk: USER_LOGIN_SK,
         userId,
         lastLoginAt: new Date().toISOString(),
         data,
@@ -36,6 +38,7 @@ export const handler = lambdaHandler<LoginRequest, LoginResponse>(async ({ data,
     await db.put(item);
     const user = await db.get<LoginUserItem>({
         pk: userId,
+        sk: USER_LOGIN_SK,
     });
 
     return {

@@ -176,6 +176,7 @@ const tables = {
             name: USERS_TABLE,
             key: [
                 { AttributeName: 'pk', KeyType: 'HASH' },
+                { AttributeName: 'sk', KeyType: 'RANGE' },
             ],
         }),
     },
@@ -336,6 +337,7 @@ const db = getDB(process.env.USERS_TABLE_NAME!);
 
 await db.put({
     pk: 'user-id',
+    sk: 'login',
     email: 'user@example.com',
 }, {
     Condition: {
@@ -345,12 +347,14 @@ await db.put({
 
 const user = await db.get({
     pk: 'user-id',
+    sk: 'login',
 }, {
-    Projection: ['pk', 'email'],
+    Projection: ['pk', 'sk', 'email'],
 });
 
 await db.update({
     pk: 'user-id',
+    sk: 'login',
 }, {
     Update: {
         loginCount: 'loginCount + 1',

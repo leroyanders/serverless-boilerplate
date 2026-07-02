@@ -12,6 +12,7 @@ const tables = {
             resourceName: USERS_TABLE_RESOURCE,
             key: [
                 { AttributeName: 'pk', KeyType: 'HASH' },
+                { AttributeName: 'sk', KeyType: 'RANGE' },
             ],
         }),
     },

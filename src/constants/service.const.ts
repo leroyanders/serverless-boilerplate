@@ -40,3 +40,4 @@ export const USERS_TABLE_DEFAULT = 'users';
 export const USER_EVENTS_QUEUE_DEFAULT = 'user-events';
 export const USER_EVENTS_TOPIC_DEFAULT = 'user-events';
 export const DEFAULT_LOCAL_USER_ID = 'local-user-id';
+export const USER_LOGIN_SK = 'login';

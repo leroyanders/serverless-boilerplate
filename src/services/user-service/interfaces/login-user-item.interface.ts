@@ -3,6 +3,7 @@ import type { SumResolverReturnType } from './sum-resolver-return.interface';
 
 export interface LoginUserItem {
     pk: string;
+    sk: string;
     userId: string;
     lastLoginAt: string;
     data: LoginRequest;
