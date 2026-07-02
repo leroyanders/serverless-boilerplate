@@ -52,6 +52,7 @@ export const handler = lambdaHandler<PublishSnsTestRequest, PublishSnsTestRespon
     const responses = await getSNS(topic).publishEvents(SERVERLESS_SERVICE_NAME, TEST_SNS_EVENT_NAME, [payload], {
         subject: data.subject ?? TEST_SNS_DEFAULT_SUBJECT,
     });
+
     const messageIds = responses.reduce<string[]>((result, response) => {
         for (const item of response.Successful ?? []) {
             if (item.MessageId) {
