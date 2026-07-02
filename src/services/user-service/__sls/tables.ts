@@ -11,7 +11,7 @@ const tables = {
             name: USERS_TABLE,
             resourceName: USERS_TABLE_RESOURCE,
             key: [
-                { AttributeName: 'id', KeyType: 'HASH' },
+                { AttributeName: 'pk', KeyType: 'HASH' },
             ],
         }),
     },

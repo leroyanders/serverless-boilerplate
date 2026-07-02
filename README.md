@@ -175,7 +175,7 @@ const tables = {
         ...SLS.createDDB({
             name: USERS_TABLE,
             key: [
-                { AttributeName: 'id', KeyType: 'HASH' },
+                { AttributeName: 'pk', KeyType: 'HASH' },
             ],
         }),
     },
@@ -320,18 +320,32 @@ await publishTopicMessage(process.env.USER_EVENTS_TOPIC_ARN!, {
 });
 ```
 
-Use DynamoDB with native JavaScript objects:
+Use DynamoDB with native JavaScript objects and `dynoexpr` builders:
 
 ```ts
-import { getItem, putItem } from '@lib/dynamodb.lib';
+import { getItem, putItem, updateItem } from '@lib/dynamodb.lib';
 
 await putItem(process.env.USERS_TABLE_NAME!, {
-    id: 'user-id',
+    pk: 'user-id',
     email: 'user@example.com',
+}, {
+    Condition: {
+        pk: 'attribute_not_exists',
+    },
 });
 
 const user = await getItem(process.env.USERS_TABLE_NAME!, {
-    id: 'user-id',
+    pk: 'user-id',
+}, {
+    Projection: ['pk', 'email'],
+});
+
+await updateItem(process.env.USERS_TABLE_NAME!, {
+    pk: 'user-id',
+}, {
+    Update: {
+        loginCount: 'loginCount + 1',
+    },
 });
 ```
 

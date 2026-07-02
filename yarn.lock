@@ -1189,6 +1189,11 @@
   resolved "https://registry.yarnpkg.com/@tsconfig/node16/-/node16-1.0.4.tgz#0b92dcc0cc1c81f6f306a381f28e31b1a56536e9"
   integrity sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==
 
+"@tuplo/dynoexpr@^3.5.1":
+  version "3.5.1"
+  resolved "https://registry.yarnpkg.com/@tuplo/dynoexpr/-/dynoexpr-3.5.1.tgz#0a3a2152495650cdb3ea7e404d10eecc96d19072"
+  integrity sha512-mg8CdA9pkB+b6TIOEnte8wgViYGZcG0kTMb23K8O41aAaytdJ2tT3xU7PFq3+jphUFu7rlTmHk387f28xTrPig==
+
 "@types/aws-lambda@^8.10.162":
   version "8.10.162"
   resolved "https://registry.yarnpkg.com/@types/aws-lambda/-/aws-lambda-8.10.162.tgz#589cfecdda3a996e9bdf20a73a26a0811cafb549"

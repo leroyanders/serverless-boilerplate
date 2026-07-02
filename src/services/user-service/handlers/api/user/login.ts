@@ -15,7 +15,7 @@ interface LoginResponse {
 }
 
 interface LoginUserItem {
-    id: string;
+    pk: string;
     userId: string;
     lastLoginAt: string;
     data: LoginRequest;
@@ -34,7 +34,7 @@ export const handler = lambdaHandler<LoginRequest, LoginResponse>(async ({ data,
         ?? 'local-user-id';
 
     const item: LoginUserItem = {
-        id: userId,
+        pk: userId,
         userId,
         lastLoginAt: new Date().toISOString(),
         data,
@@ -43,7 +43,7 @@ export const handler = lambdaHandler<LoginRequest, LoginResponse>(async ({ data,
 
     await putItem(tableName, item);
     const user = await getItem<LoginUserItem>(tableName, {
-        id: userId,
+        pk: userId,
     });
 
     return {
