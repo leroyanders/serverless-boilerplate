@@ -8,16 +8,20 @@ export const AUTHORIZER_FN = 'auth';
 export const API_USER_LOGIN_FN = 'apiUserLogin';
 export const QUEUE_SEND_QUEUE_MESSAGE_FN = 'testSendQueueMessage';
 export const QUEUE_PUBLISH_TOPIC_MESSAGE_FN = 'testPublishTopicMessage';
+export const QUEUE_PUT_EVENTBRIDGE_EVENT_FN = 'testPutEventBridgeEvent';
 export const QUEUE_HANDLE_QUEUE_MESSAGE_FN = 'testHandleQueueMessage';
 export const QUEUE_HANDLE_TOPIC_MESSAGE_FN = 'testHandleTopicMessage';
+export const QUEUE_HANDLE_EVENTBRIDGE_EVENT_FN = 'testHandleEventBridgeEvent';
 
 // Handler paths
 export const AUTHORIZER_HANDLER = 'authorizer.handler';
 export const API_USER_LOGIN_HANDLER = 'handlers/api/user/login.handler';
 export const QUEUE_SEND_QUEUE_MESSAGE_HANDLER = 'handlers/api/queue/publish-sqs.handler';
 export const QUEUE_PUBLISH_TOPIC_MESSAGE_HANDLER = 'handlers/api/queue/publish-sns.handler';
+export const QUEUE_PUT_EVENTBRIDGE_EVENT_HANDLER = 'handlers/api/queue/publish-ebh.handler';
 export const QUEUE_HANDLE_QUEUE_MESSAGE_HANDLER = 'handlers/events/sqs/user-events.handler';
 export const QUEUE_HANDLE_TOPIC_MESSAGE_HANDLER = 'handlers/events/sns/user-events.handler';
+export const QUEUE_HANDLE_EVENTBRIDGE_EVENT_HANDLER = 'handlers/events/ebh/user-events.handler';
 
 // Http
 export const HTTP_GET_METHOD = 'GET';
@@ -25,6 +29,7 @@ export const HTTP_POST_METHOD = 'POST';
 export const ROOT_HTTP_PATH = '/';
 export const QUEUE_SQS_HTTP_PATH = '/queue/sqs';
 export const QUEUE_SNS_HTTP_PATH = '/queue/sns';
+export const QUEUE_EBH_HTTP_PATH = '/queue/ebh';
 export const REQUEST_AUTHORIZER_TYPE = 'request';
 
 // Resources
@@ -35,10 +40,14 @@ export const SQS_REPORT_BATCH_ITEM_FAILURES = 'ReportBatchItemFailures';
 export const USERS_TABLE_RESOURCE = 'UsersTable';
 export const USER_EVENTS_QUEUE_RESOURCE = 'UserEventsQueue';
 export const USER_EVENTS_TOPIC_RESOURCE = 'UserEventsTopic';
+export const USER_EVENTS_EVENT_BUS_RESOURCE = 'UserEventsEventBus';
 
 // Runtime defaults
 export const USERS_TABLE_DEFAULT = 'users';
 export const USER_EVENTS_QUEUE_DEFAULT = 'user-events';
 export const USER_EVENTS_TOPIC_DEFAULT = 'user-events';
+export const USER_EVENTS_EVENT_BUS_DEFAULT = 'user-events';
+export const USER_EVENTS_EVENT_SOURCE = 'user-service';
+export const USER_EVENTS_EVENT_DETAIL_TYPE = 'user.events.test';
 export const DEFAULT_LOCAL_USER_ID = 'local-user-id';
 export const USER_LOGIN_SK = 'login';

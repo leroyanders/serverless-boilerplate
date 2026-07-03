@@ -15,6 +15,7 @@ export enum IamAction {
     DYNAMODB_QUERY = 'dynamodb:Query',
     DYNAMODB_SCAN = 'dynamodb:Scan',
     DYNAMODB_UPDATE_ITEM = 'dynamodb:UpdateItem',
+    EVENTBRIDGE_PUT_EVENTS = 'events:PutEvents',
     LAMBDA_INVOKE_FUNCTION = 'lambda:InvokeFunction',
     SNS_PUBLISH = 'sns:Publish',
     SNS_PUBLISH_BATCH = 'sns:PublishBatch',
@@ -70,6 +71,11 @@ export type CreateSQSConfig = {
 };
 
 export type CreateSNSConfig = {
+    name: string;
+    resourceName?: string;
+};
+
+export type CreateEventBridgeConfig = {
     name: string;
     resourceName?: string;
 };

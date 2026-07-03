@@ -13,6 +13,9 @@ type LocalIamRoleStatement = {
 };
 
 type ServerlessPrintConfig = {
+    functions?: Record<string, {
+        events?: unknown[];
+    }>;
     provider?: {
         iam?: {
             role?: {
@@ -23,8 +26,9 @@ type ServerlessPrintConfig = {
 };
 
 const roleStatementsCache = new Map<string, LocalIamRoleStatement[]>();
+const serverlessConfigCache = new Map<string, ServerlessPrintConfig>();
 
-const getServiceRoot = (): string =>
+export const getServiceRoot = (): string =>
     process.env.PWD || process.cwd();
 
 const hasServerlessConfig = (serviceRoot: string): boolean =>
@@ -123,13 +127,13 @@ const toDeployedFunctionName = (
         ? serviceName
         : `${serviceName}-${functionName}`;
 
-const getLocalIamRoleStatements = async (
+export const getLocalServerlessConfig = async (
     serviceRoot: string,
-): Promise<LocalIamRoleStatement[]> => {
-    const cachedStatements = roleStatementsCache.get(serviceRoot);
+): Promise<ServerlessPrintConfig> => {
+    const cachedConfig = serverlessConfigCache.get(serviceRoot);
 
-    if (cachedStatements) {
-        return cachedStatements;
+    if (cachedConfig) {
+        return cachedConfig;
     }
 
     const { stdout } = await execa(resolveSlsBin(serviceRoot), [
@@ -141,6 +145,22 @@ const getLocalIamRoleStatements = async (
     });
 
     const config = JSON.parse(stdout) as ServerlessPrintConfig;
+
+    serverlessConfigCache.set(serviceRoot, config);
+
+    return config;
+};
+
+const getLocalIamRoleStatements = async (
+    serviceRoot: string,
+): Promise<LocalIamRoleStatement[]> => {
+    const cachedStatements = roleStatementsCache.get(serviceRoot);
+
+    if (cachedStatements) {
+        return cachedStatements;
+    }
+
+    const config = await getLocalServerlessConfig(serviceRoot);
     const statements = config.provider?.iam?.role?.statements ?? [];
 
     roleStatementsCache.set(serviceRoot, statements);

@@ -19,8 +19,8 @@ This boilerplate is designed for fast-moving serverless projects that still need
 - **Lambda resolver pattern** for splitting API-facing handlers from internal business operations.
 - **Local resolver execution** through `sls invoke local` when `NODE_ENV=dev`.
 - **AWS Lambda invocation** for production resolver calls through `@aws-sdk/client-lambda`.
-- **Typed AWS helpers** for SQS, SNS, and DynamoDB operations.
-- **Typed SQS/SNS handlers** with local producer-to-consumer dispatch.
+- **Typed AWS helpers** for SQS, SNS, EventBridge, and DynamoDB operations.
+- **Typed SQS/SNS/EventBridge handlers** with local producer-to-consumer dispatch.
 - **Dotenv-powered configuration** through `.env` and `serverless-dotenv-plugin`.
 - **Path aliases** for cleaner imports such as `@lib/*`.
 
@@ -49,6 +49,8 @@ The API handler stays thin: it receives normalized request data, reads authentic
 │   │   ├── authorizer.ts
 │   │   ├── aws-client-config.ts
 │   │   ├── dynamodb.ts
+│   │   ├── eventbridge-handler.ts
+│   │   ├── eventbridge.ts
 │   │   ├── invoke-function.ts
 │   │   ├── lambda-handler.ts
 │   │   ├── logger.ts
@@ -75,12 +77,15 @@ The API handler stays thin: it receives normalized request data, reads authentic
 │   │       ├── __sls
 │   │       │   ├── const.ts
 │   │       │   ├── db.ts
+│   │       │   ├── ebh.def.ts
 │   │       │   ├── roles.ts
 │   │       │   ├── sns.def.ts
 │   │       │   ├── sqs.def.ts
 │   │       │   └── tables.ts
 │   │       ├── __test
 │   │       │   ├── event.json
+│   │       │   ├── ebh-event.json
+│   │       │   ├── publish-ebh-event.json
 │   │       │   ├── publish-sns-event.json
 │   │       │   ├── send-sqs-event.json
 │   │       │   ├── sns-event.json
@@ -88,6 +93,7 @@ The API handler stays thin: it receives normalized request data, reads authentic
 │   │       ├── handlers
 │   │       │   ├── api
 │   │       │   │   ├── queue
+│   │       │   │   │   ├── publish-ebh.ts
 │   │       │   │   │   ├── publish-sns.ts
 │   │       │   │   │   └── publish-sqs.ts
 │   │       │   │   └── user
@@ -95,7 +101,9 @@ The API handler stays thin: it receives normalized request data, reads authentic
 │   │       │   └── events
 │   │       │       ├── sns
 │   │       │       │   └── user-events.ts
-│   │       │       └── sqs
+│   │       │       ├── sqs
+│   │       │       │   └── user-events.ts
+│   │       │       └── ebh
 │   │       │           └── user-events.ts
 │   │       ├── interfaces
 │   │       ├── serverless.ts
@@ -175,9 +183,9 @@ Serverless services use `serverless-dotenv-plugin` with `path: ../../../.env`, b
 
 ## Infrastructure Resources
 
-DynamoDB table names live in `__sls/tables.ts`, DynamoDB resources in `__sls/db.ts`, queue definitions in `__sls/sqs.def.ts`, topic definitions in `__sls/sns.def.ts`, shared resource logical ids in `__sls/const.ts`, and IAM permissions in `__sls/roles.ts`.
+DynamoDB table names live in `__sls/tables.ts`, DynamoDB resources in `__sls/db.ts`, queue definitions in `__sls/sqs.def.ts`, topic definitions in `__sls/sns.def.ts`, EventBridge definitions in `__sls/ebh.def.ts`, shared resource logical ids in `__sls/const.ts`, and IAM permissions in `__sls/roles.ts`.
 
-The shared `src/sls.defaults.ts` file owns common Serverless defaults through `SLS.serverless` (`frameworkVersion`, package settings, `custom`, base `provider`, and plugins). It also exposes `SLS.ddb`, `SLS.queue`, `SLS.topic`, `genApiEndpoint`, ARN builders, and IAM statement flattening, so service configs stay small and consistent:
+The shared `src/sls.defaults.ts` file owns common Serverless defaults through `SLS.serverless` (`frameworkVersion`, package settings, `custom`, base `provider`, and plugins). It also exposes `SLS.ddb`, `SLS.queue`, `SLS.topic`, `SLS.eventBridge`, `genApiEndpoint`, ARN builders, and IAM statement flattening, so service configs stay small and consistent:
 
 ```ts
 import Aws from 'serverless/aws';
@@ -239,7 +247,7 @@ export default SLS.createIamRoleStatements({
 
 ## Local AWS
 
-Start local SQS, SNS, and DynamoDB:
+Start local SQS, SNS, EventBridge, and DynamoDB:
 
 ```bash
 yarn local:aws:up
@@ -247,20 +255,21 @@ yarn local:aws:up
 
 When `NODE_ENV=dev`, the AWS helpers automatically use LocalStack at `http://localhost:4566` with local credentials. You can override that endpoint with `LOCAL_AWS_ENDPOINT`.
 
-The sample queue, topic, and table are composed directly in `src/services/user-service/serverless.ts` from `db.Resources`, `userEventsQueue.def`, and `userEventsTopic.def`. LocalStack only provides local AWS-compatible endpoints; it does not bootstrap resources through shell scripts.
+The sample queue, topic, event bus, and table are composed directly in `src/services/user-service/serverless.ts` from `db.Resources`, `userEventsQueue.def`, `userEventsTopic.def`, and `userEventsEventBus.def`. LocalStack only provides local AWS-compatible endpoints; it does not bootstrap resources through shell scripts.
 
 `SSMAuthServiceDomain` is generated with `SLS.genApiEndpoint('user')` and stores the deployed API Gateway endpoint in SSM Parameter Store.
 
-In local mode, `getSQS` accepts either a full queue URL or a queue name, and `getSNS` accepts either a full topic ARN or a topic name.
+In local mode, `getSQS` accepts either a full queue URL or a queue name, `getSNS` accepts either a full topic ARN or a topic name, and `getEventBridge` accepts either a full event bus ARN or an event bus name.
 
 Local producer-to-consumer dispatch is controlled by `.env` maps:
 
 ```bash
 LOCAL_SQS_EVENT_HANDLERS=user-events=testHandleQueueMessage
 LOCAL_SNS_EVENT_HANDLERS=user-events=testHandleTopicMessage
+LOCAL_EVENTBRIDGE_EVENT_HANDLERS=user-events:user-service:user.events.test=testHandleEventBridgeEvent
 ```
 
-That means `testSendQueueMessage` sends to the local SQS queue and then immediately invokes `testHandleQueueMessage` with a generated `SQSEvent`. `testPublishTopicMessage` does the same for SNS.
+That means `testSendQueueMessage` sends to the local SQS queue and then immediately invokes `testHandleQueueMessage` with a generated `SQSEvent`. `testPublishTopicMessage` does the same for SNS. `testPutEventBridgeEvent` checks the local IAM role for `events:PutEvents`, finds every matching local `eventBridge` listener from the compiled Serverless config, adds any explicit `LOCAL_EVENTBRIDGE_EVENT_HANDLERS` mappings, and invokes each listener with the same generated `EventBridgeEvent`.
 
 Run local smoke tests:
 
@@ -274,12 +283,20 @@ yarn sls:user-service:invoke \
   --path __test/publish-sns-event.json
 
 yarn sls:user-service:invoke \
+  --function testPutEventBridgeEvent \
+  --path __test/publish-ebh-event.json
+
+yarn sls:user-service:invoke \
   --function testHandleQueueMessage \
   --path __test/sqs-event.json
 
 yarn sls:user-service:invoke \
   --function testHandleTopicMessage \
   --path __test/sns-event.json
+
+yarn sls:user-service:invoke \
+  --function testHandleEventBridgeEvent \
+  --path __test/ebh-event.json
 
 yarn sls:user-service:invoke \
   --function apiUserLogin \
@@ -329,23 +346,27 @@ yarn sls:calculate-service remove \
 | `LOCAL_AWS_ENDPOINT` | Local optional | `src/libs/aws-client-config.ts` | Shared LocalStack endpoint. Defaults to `http://localhost:4566`. |
 | `SQS_ENDPOINT` | Optional | `src/libs/sqs.ts` | Custom SQS-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for SQS. |
 | `SNS_ENDPOINT` | Optional | `src/libs/sns.ts` | Custom SNS-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for SNS. |
+| `EVENTBRIDGE_ENDPOINT` | Optional | `src/libs/eventbridge.ts` | Custom EventBridge-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for EventBridge in deployed-style calls. |
 | `DYNAMODB_ENDPOINT` | Optional | `src/libs/dynamodb.ts` | Custom DynamoDB-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for DynamoDB. |
-| `DRY_RUN` | Optional | SQS and SNS publishers | Set to `true` or `1` to skip batch publishing. |
+| `DRY_RUN` | Optional | SQS, SNS, and EventBridge publishers | Set to `true` or `1` to skip publishing. |
 | `USER_EVENTS_QUEUE_NAME` | Example | SQS examples | Local queue name. |
 | `USER_EVENTS_QUEUE_URL` | Example | SQS examples | Full local queue URL. |
 | `USER_EVENTS_QUEUE_ARN` | Example | SQS examples | Full local queue ARN. |
 | `USER_EVENTS_TOPIC_NAME` | Example | SNS examples | Local topic name. |
 | `USER_EVENTS_TOPIC_ARN` | Example | SNS examples | Full local topic ARN. |
+| `USER_EVENTS_EVENT_BUS_NAME` | Example | EventBridge examples | Local event bus name. |
+| `USER_EVENTS_EVENT_BUS_ARN` | Example | EventBridge examples | Full local event bus ARN. |
 | `USERS_TABLE_NAME` | Example | DynamoDB examples and `src/services/user-service/__sls/tables.ts` | DynamoDB table name. |
 | `LOCAL_SQS_EVENT_HANDLERS` | Local optional | `src/libs/sqs.ts` | Comma-separated `queueName=functionName` map for local SQS dispatch. |
 | `LOCAL_SNS_EVENT_HANDLERS` | Local optional | `src/libs/sns.ts` | Comma-separated `topicName=functionName` map for local SNS dispatch. |
+| `LOCAL_EVENTBRIDGE_EVENT_HANDLERS` | Local optional | `src/libs/eventbridge.ts` | Comma-separated `eventBus:source:detailType=functionName` map for extra local EventBridge dispatch targets. Matching `eventBridge` listeners are also discovered from Serverless config. |
 
 ## AWS Helpers
 
 Publish SQS events:
 
 ```ts
-import { sendMessage } from '@lib/sqs.lib';
+import { sendMessage } from '@lib/sqs';
 
 await sendMessage(
     process.env.USER_EVENTS_QUEUE_URL!,
@@ -358,10 +379,25 @@ await sendMessage(
 Publish SNS events:
 
 ```ts
-import { publishSNS } from '@lib/sns.lib';
+import { publishSNS } from '@lib/sns';
 
 await publishSNS(
     process.env.USER_EVENTS_TOPIC_ARN!,
+    {
+        userId: 'user-id',
+    },
+);
+```
+
+Publish EventBridge events:
+
+```ts
+import { putEventBridgeEvent } from '@lib/eventbridge';
+
+await putEventBridgeEvent(
+    process.env.USER_EVENTS_EVENT_BUS_NAME!,
+    'user-service',
+    'user.events.test',
     {
         userId: 'user-id',
     },
@@ -373,7 +409,7 @@ await publishSNS(
 Use DynamoDB with native JavaScript objects and `dynoexpr` builders:
 
 ```ts
-import { getDB } from '@lib/dynamodb.lib';
+import { getDB } from '@lib/dynamodb';
 
 const db = getDB(process.env.USERS_TABLE_NAME!);
 
@@ -407,10 +443,11 @@ await db.update({
 Create an SQS consumer:
 
 ```ts
-import { sqsHandler } from '@lib/sqs-handler.lib';
+import log from '@lib/logger';
+import { sqsHandler } from '@lib/sqs-handler';
 
 export const handler = sqsHandler<{ event: string }>(async ({ data, messageId }) => {
-    console.info('received sqs message', {
+    log.info('received sqs message', {
         data,
         messageId,
     });
@@ -420,14 +457,32 @@ export const handler = sqsHandler<{ event: string }>(async ({ data, messageId })
 Create an SNS consumer:
 
 ```ts
-import { snsHandler } from '@lib/sns-handler.lib';
+import log from '@lib/logger';
+import { snsHandler } from '@lib/sns-handler';
 
 export const handler = snsHandler<{ event: string }>(async ({ data, messageId }) => {
-    console.info('received sns message', {
+    log.info('received sns message', {
         data,
         messageId,
     });
 });
+```
+
+Create an EventBridge consumer:
+
+```ts
+import log from '@lib/logger';
+import { eventBridgeHandler } from '@lib/eventbridge-handler';
+
+export const handler = eventBridgeHandler<'user.events.test', { event: string }>(
+    async ({ data, detailType, eventId }) => {
+        log.info('received eventbridge event', {
+            data,
+            detailType,
+            eventId,
+        });
+    },
+);
 ```
 
 ## Request Flow

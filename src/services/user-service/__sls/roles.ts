@@ -2,6 +2,7 @@ import {
     SERVERLESS_CALCULATE_SERVICE_NAME,
 } from '../../calculate-service/__sls/const';
 import * as SLS from '../../../sls.defaults';
+import { userEventsEventBus } from './ebh.def';
 import { userEventsTopic } from './sns.def';
 import { userEventsQueue } from './sqs.def';
 import { USERS_TABLE } from './tables';
@@ -48,6 +49,13 @@ export default SLS.createIamRoleStatements({
             Effect: SLS.IamEffect.ALLOW,
             Action: [SLS.IamAction.SNS_PUBLISH, SLS.IamAction.SNS_PUBLISH_BATCH],
             Resource: userEventsTopic.arn,
+        },
+    },
+    userEventsEventBus: {
+        publish: {
+            Effect: SLS.IamEffect.ALLOW,
+            Action: [SLS.IamAction.EVENTBRIDGE_PUT_EVENTS],
+            Resource: userEventsEventBus.arn,
         },
     },
     invokeCalculateService: {

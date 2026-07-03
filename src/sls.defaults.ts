@@ -11,6 +11,7 @@ import type {
     CloudFormationResource,
     CloudFormationResources,
     CreateDDBConfig,
+    CreateEventBridgeConfig,
     CreateSNSConfig,
     CreateSQSConfig,
     DynamoGsi,
@@ -207,6 +208,35 @@ export const topic = ({
     };
 };
 
+export const createEventBridge = ({
+    name,
+    resourceName,
+}: CreateEventBridgeConfig): CloudFormationResources => ({
+    [resourceName ?? toResourceName(name, 'EventBus')]: {
+        Type: 'AWS::Events::EventBus',
+        Properties: {
+            Name: name,
+        },
+    },
+});
+
+export const eventBridge = ({
+    name,
+    resourceName,
+}: CreateEventBridgeConfig) => {
+    const eid = resourceName ?? toResourceName(name, 'EventBus');
+
+    return {
+        arn: makeEventBridgeArn(name),
+        def: createEventBridge({
+            name,
+            resourceName: eid,
+        }),
+        eid,
+        name,
+    };
+};
+
 export const genApiEndpoint = (service: string): CloudFormationResource => ({
     Type: 'AWS::SSM::Parameter',
     Properties: {
@@ -245,6 +275,9 @@ export const makeSQSArn = (queueName: string): string =>
 
 export const makeSNSArn = (topicName: string): string =>
     `arn:aws:sns:${getRegion()}:${getAccountId()}:${topicName}`;
+
+export const makeEventBridgeArn = (eventBusName: string): string =>
+    `arn:aws:events:${getRegion()}:${getAccountId()}:event-bus/${eventBusName}`;
 
 export const makeLambdaArn = (functionName: string): string =>
     `arn:aws:lambda:${getRegion()}:${getAccountId()}:function:${functionName}`;

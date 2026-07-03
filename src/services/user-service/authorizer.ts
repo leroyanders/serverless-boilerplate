@@ -5,6 +5,7 @@ import type {
     Context,
 } from 'aws-lambda';
 import {
+    QUEUE_EBH_HTTP_PATH,
     QUEUE_SNS_HTTP_PATH,
     QUEUE_SQS_HTTP_PATH,
     ROOT_HTTP_PATH,
@@ -27,6 +28,7 @@ export const handler: RequestAuthorizerCallbackHandler = async (event, context, 
             policy.allowMethod(AuthPolicy.HttpVerb.GET, ROOT_HTTP_PATH);
             policy.allowMethod(AuthPolicy.HttpVerb.POST, QUEUE_SQS_HTTP_PATH);
             policy.allowMethod(AuthPolicy.HttpVerb.POST, QUEUE_SNS_HTTP_PATH);
+            policy.allowMethod(AuthPolicy.HttpVerb.POST, QUEUE_EBH_HTTP_PATH);
         });
         log.debug('response', authResponse);
 
