@@ -23,6 +23,7 @@ export const lambdaHandler =
             } as TRequest;
 
             const ctx: LambdaContext = {
+                principalId: event.requestContext?.authorizer?.principalId as string | undefined,
                 userId: event.requestContext?.authorizer?.userId as string | undefined,
             };
 

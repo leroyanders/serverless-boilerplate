@@ -1,43 +1,44 @@
-import {
-    APIGatewayRequestAuthorizerEventV2,
-    APIGatewaySimpleAuthorizerWithContextResult,
+import type {
+    APIGatewayAuthorizerResult,
+    APIGatewayRequestAuthorizerEvent,
+    Callback,
+    Context,
 } from 'aws-lambda';
-import jwt from 'jsonwebtoken';
-import type { AuthorizerContext } from './interfaces/authorizer-context.interface';
-import type { JwtPayload } from './interfaces/jwt.interface';
+import {
+    QUEUE_SNS_HTTP_PATH,
+    QUEUE_SQS_HTTP_PATH,
+    ROOT_HTTP_PATH,
+} from '@constants/service.const';
+import { AuthPolicy } from '@lib/auth-policy';
+import { authorizer } from '@lib/authorizer';
+import log, { logBeforeTimeout } from '@lib/logger';
 
-export const handler = async (
-    event: APIGatewayRequestAuthorizerEventV2,
-): Promise<APIGatewaySimpleAuthorizerWithContextResult<AuthorizerContext>> => {
+type RequestAuthorizerCallbackHandler = (
+    event: APIGatewayRequestAuthorizerEvent,
+    context: Context,
+    callback: Callback<APIGatewayAuthorizerResult>,
+) => Promise<void>;
+
+export const handler: RequestAuthorizerCallbackHandler = async (event, context, callback) => {
+    const cleanup = logBeforeTimeout(event, context);
+
     try {
-        const token = event.headers?.authorization?.replace(/^Bearer\s+/i, '');
+        const authResponse = await authorizer(event, (policy) => {
+            policy.allowMethod(AuthPolicy.HttpVerb.GET, ROOT_HTTP_PATH);
+            policy.allowMethod(AuthPolicy.HttpVerb.POST, QUEUE_SQS_HTTP_PATH);
+            policy.allowMethod(AuthPolicy.HttpVerb.POST, QUEUE_SNS_HTTP_PATH);
+        });
+        log.debug('response', authResponse);
 
-        if (!token) {
-            return {
-                isAuthorized: false,
-                context: {
-                    userId: 'anonymous'
-                },
-            };
+        if (typeof authResponse == 'string') {
+            callback(authResponse);
+        } else {
+            callback(null, authResponse);
         }
-
-        const payload = jwt.verify(
-            token,
-            process.env.JWT_SECRET!,
-        ) as JwtPayload;
-
-        return {
-            isAuthorized: true,
-            context: {
-                userId: payload.sub,
-            },
-        };
-    } catch {
-        return {
-            isAuthorized: false,
-            context: {
-                userId: 'anonymous'
-            },
-        };
+    } catch (e) {
+        log.error('TRY-CATCH', e);
+        throw e;
+    } finally {
+        cleanup();
     }
 };

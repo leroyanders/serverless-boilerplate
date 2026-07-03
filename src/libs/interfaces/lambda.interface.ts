@@ -1,4 +1,5 @@
 export interface LambdaContext {
+    principalId?: string;
     userId?: string;
 }
 
