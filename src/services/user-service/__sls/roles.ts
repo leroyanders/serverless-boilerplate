@@ -1,7 +1,7 @@
 import {
     SERVERLESS_CALCULATE_SERVICE_NAME,
 } from '@constants/service.const';
-import * as SLS from '../../sls.defaults';
+import * as SLS from '../../../sls.defaults';
 import {
     USER_EVENTS_QUEUE,
     USER_EVENTS_TOPIC,

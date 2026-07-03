@@ -1,5 +1,5 @@
 import Aws from 'serverless/aws';
-import * as SLS from '../../sls.defaults';
+import * as SLS from '../../../sls.defaults';
 import {
     USER_EVENTS_QUEUE,
     USER_EVENTS_QUEUE_RESOURCE,

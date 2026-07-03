@@ -5,7 +5,7 @@ import {
     CALCULATE_SERVICE_RESOLVER_HANDLER,
     SERVERLESS_CALCULATE_SERVICE_NAME,
 } from '@constants/service.const';
-import * as SLS from '../sls.defaults';
+import * as SLS from '../../sls.defaults';
 
 module.exports = {
     ...SLS.serverless,

@@ -26,7 +26,7 @@ import {
     QUEUE_SEND_QUEUE_MESSAGE_HANDLER,
     QUEUE_SQS_HTTP_PATH,
 } from '@constants/service.const';
-import * as SLS from '../sls.defaults';
+import * as SLS from '../../sls.defaults';
 import {
     USER_EVENTS_QUEUE_RESOURCE,
     USER_EVENTS_TOPIC,

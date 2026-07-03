@@ -17,12 +17,12 @@ import type {
     DynamoKey,
     IamRoleStatement,
     IamRoleStatementGroup,
-} from '../types/sls.type';
+} from './types/sls.type';
 
 export type {
     IamRoleStatement,
     IamRoleStatementGroup,
-} from '../types/sls.type';
+} from './types/sls.type';
 
 export const frameworkVersion = '3';
 

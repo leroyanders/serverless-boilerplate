@@ -1,5 +1,5 @@
 import Aws from 'serverless/aws';
-import * as SLS from '../../sls.defaults';
+import * as SLS from '../../../sls.defaults';
 import {
     USERS_TABLE,
     USERS_TABLE_RESOURCE,
