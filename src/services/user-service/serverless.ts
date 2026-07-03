@@ -27,16 +27,10 @@ import {
     QUEUE_SQS_HTTP_PATH,
 } from '@constants/service.const';
 import * as SLS from '../../sls.defaults';
-import {
-    USER_EVENTS_QUEUE_RESOURCE,
-    USER_EVENTS_TOPIC,
-    USER_EVENTS_TOPIC_RESOURCE,
-} from './__sls/consts';
-import {
-    Outputs,
-    Resources,
-} from './__sls/resources';
+import db from './__sls/db';
 import statements from './__sls/roles';
+import { userEventsTopic } from './__sls/sns.def';
+import { userEventsQueue } from './__sls/sqs.def';
 
 module.exports = {
     ...SLS.serverless,
@@ -110,7 +104,7 @@ module.exports = {
                 {
                     sqs: {
                         arn: {
-                            'Fn::GetAtt': [USER_EVENTS_QUEUE_RESOURCE, CFN_ARN_ATTRIBUTE],
+                            'Fn::GetAtt': [userEventsQueue.qid, CFN_ARN_ATTRIBUTE],
                         } as unknown as string,
                         batchSize: SQS_EVENT_BATCH_SIZE,
                         functionResponseType: SQS_REPORT_BATCH_ITEM_FAILURES,
@@ -125,9 +119,9 @@ module.exports = {
                 {
                     sns: {
                         arn: {
-                            Ref: USER_EVENTS_TOPIC_RESOURCE,
+                            Ref: userEventsTopic.tid,
                         } as unknown as string,
-                        topicName: USER_EVENTS_TOPIC,
+                        topicName: userEventsTopic.name,
                     },
                 },
             ],
@@ -137,8 +131,9 @@ module.exports = {
     resources: {
         Resources: {
             [SSM_USER_SERVICE_DOMAIN_RESOURCE]: SLS.genApiEndpoint(SERVERLESS_USER_DOMAIN),
-            ...Resources,
+            ...db.Resources,
+            ...userEventsQueue.def,
+            ...userEventsTopic.def,
         },
-        Outputs,
     },
 } as Serverless;

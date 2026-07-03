@@ -1,21 +1,5 @@
-import Aws from 'serverless/aws';
-import * as SLS from '../../../sls.defaults';
 import {
-    USERS_TABLE,
-    USERS_TABLE_RESOURCE,
-} from './consts';
+    USERS_TABLE_DEFAULT,
+} from '@constants/service.const';
 
-const tables = {
-    Resources: {
-        ...SLS.createDDB({
-            name: USERS_TABLE,
-            resourceName: USERS_TABLE_RESOURCE,
-            key: [
-                { AttributeName: 'pk', KeyType: SLS.DynamoKeyType.HASH },
-                { AttributeName: 'sk', KeyType: SLS.DynamoKeyType.RANGE },
-            ],
-        }),
-    },
-} as Aws.Resources;
-
-export default tables;
+export const USERS_TABLE = process.env.USERS_TABLE_NAME ?? USERS_TABLE_DEFAULT;

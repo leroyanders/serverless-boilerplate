@@ -173,19 +173,21 @@ Serverless services use `serverless-dotenv-plugin` with `path: ../../../.env`, b
 
 ## Infrastructure Resources
 
-DynamoDB tables are declared in each service under `__sls/tables.ts`, queues under `__sls/queues.ts`, topics under `__sls/topics.ts`, IAM permissions under `__sls/roles.ts`, and `__sls/resources.ts` exports `Resources` and `Outputs` for the service config.
+DynamoDB table names live in `__sls/tables.ts`, DynamoDB resources in `__sls/db.ts`, queue definitions in `__sls/sqs.def.ts`, topic definitions in `__sls/sns.def.ts`, shared resource logical ids in `__sls/const.ts`, and IAM permissions in `__sls/roles.ts`.
 
-The shared `src/services/sls.defaults.ts` file owns common Serverless defaults through `SLS.serverless` (`frameworkVersion`, package settings, `custom`, base `provider`, and plugins). It also exposes `createDDB`, `createSQS`, `createSNS`, `genApiEndpoint`, ARN builders, and IAM statement flattening, so service configs stay small and consistent:
+The shared `src/sls.defaults.ts` file owns common Serverless defaults through `SLS.serverless` (`frameworkVersion`, package settings, `custom`, base `provider`, and plugins). It also exposes `SLS.ddb`, `SLS.queue`, `SLS.topic`, `genApiEndpoint`, ARN builders, and IAM statement flattening, so service configs stay small and consistent:
 
 ```ts
 import Aws from 'serverless/aws';
 import * as SLS from '../../sls.defaults';
-import { USERS_TABLE } from './consts';
+import { USERS_TABLE_RESOURCE } from './const';
+import { USERS_TABLE } from './tables';
 
-const tables = {
+const db = {
     Resources: {
-        ...SLS.createDDB({
+        ...SLS.ddb({
             name: USERS_TABLE,
+            resourceName: USERS_TABLE_RESOURCE,
             key: [
                 { AttributeName: 'pk', KeyType: SLS.DynamoKeyType.HASH },
                 { AttributeName: 'sk', KeyType: SLS.DynamoKeyType.RANGE },
@@ -194,12 +196,23 @@ const tables = {
     },
 } as Aws.Resources;
 
-export default tables;
+export default db;
 ```
 
 ```ts
 import * as SLS from '../../sls.defaults';
-import { USERS_TABLE } from './consts';
+import { USER_EVENTS_QUEUE_RESOURCE } from './const';
+
+export const userEventsQueue = SLS.queue({
+    name: 'user-events',
+    resourceName: USER_EVENTS_QUEUE_RESOURCE,
+});
+```
+
+```ts
+import * as SLS from '../../sls.defaults';
+import { userEventsQueue } from './sqs.def';
+import { USERS_TABLE } from './tables';
 
 export default SLS.createIamRoleStatements({
     userStore: {
@@ -210,6 +223,13 @@ export default SLS.createIamRoleStatements({
                 SLS.makeDBArn(USERS_TABLE),
                 SLS.makeDBArn(USERS_TABLE, 'index/*'),
             ],
+        },
+    },
+    userEventsQueue: {
+        send: {
+            Effect: SLS.IamEffect.ALLOW,
+            Action: [SLS.IamAction.SQS_SEND_MESSAGE],
+            Resource: userEventsQueue.arn,
         },
     },
 } satisfies SLS.IamRoleStatementGroup);
@@ -225,9 +245,9 @@ yarn local:aws:up
 
 When `NODE_ENV=dev`, the AWS helpers automatically use LocalStack at `http://localhost:4566` with local credentials. You can override that endpoint with `LOCAL_AWS_ENDPOINT`.
 
-The sample queue, topic, and table are Serverless resources composed through `resources: { Resources: { ...Resources }, Outputs }` in `src/services/user-service/serverless.ts`. LocalStack only provides local AWS-compatible endpoints; it does not bootstrap resources through shell scripts.
+The sample queue, topic, and table are composed directly in `src/services/user-service/serverless.ts` from `db.Resources`, `userEventsQueue.def`, and `userEventsTopic.def`. LocalStack only provides local AWS-compatible endpoints; it does not bootstrap resources through shell scripts.
 
-`SSMAuthServiceDomain` is generated with `SLS.genApiEndpoint('auth')` and stores the deployed API Gateway endpoint in SSM Parameter Store.
+`SSMAuthServiceDomain` is generated with `SLS.genApiEndpoint('user')` and stores the deployed API Gateway endpoint in SSM Parameter Store.
 
 In local mode, `getSQS` accepts either a full queue URL or a queue name, and `getSNS` accepts either a full topic ARN or a topic name.
 

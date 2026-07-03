@@ -141,6 +141,8 @@ export const createDDB = ({
     },
 });
 
+export const ddb = createDDB;
+
 export const createSQS = ({
     name,
     resourceName,
@@ -157,6 +159,25 @@ export const createSQS = ({
     },
 });
 
+export const queue = ({
+    name,
+    resourceName,
+    visibilityTimeout,
+}: CreateSQSConfig) => {
+    const qid = resourceName ?? toResourceName(name, 'Queue');
+
+    return {
+        arn: makeSQSArn(name),
+        def: createSQS({
+            name,
+            resourceName: qid,
+            visibilityTimeout,
+        }),
+        name,
+        qid,
+    };
+};
+
 export const createSNS = ({
     name,
     resourceName,
@@ -168,6 +189,23 @@ export const createSNS = ({
         },
     },
 });
+
+export const topic = ({
+    name,
+    resourceName,
+}: CreateSNSConfig) => {
+    const tid = resourceName ?? toResourceName(name, 'Topic');
+
+    return {
+        arn: makeSNSArn(name),
+        def: createSNS({
+            name,
+            resourceName: tid,
+        }),
+        name,
+        tid,
+    };
+};
 
 export const genApiEndpoint = (service: string): CloudFormationResource => ({
     Type: 'AWS::SSM::Parameter',

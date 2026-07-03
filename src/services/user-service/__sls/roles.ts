@@ -2,11 +2,9 @@ import {
     SERVERLESS_CALCULATE_SERVICE_NAME,
 } from '@constants/service.const';
 import * as SLS from '../../../sls.defaults';
-import {
-    USER_EVENTS_QUEUE,
-    USER_EVENTS_TOPIC,
-    USERS_TABLE,
-} from './consts';
+import { userEventsTopic } from './sns.def';
+import { userEventsQueue } from './sqs.def';
+import { USERS_TABLE } from './tables';
 
 export default SLS.createIamRoleStatements({
     userStore: {
@@ -33,7 +31,7 @@ export default SLS.createIamRoleStatements({
         send: {
             Effect: SLS.IamEffect.ALLOW,
             Action: [SLS.IamAction.SQS_SEND_MESSAGE, SLS.IamAction.SQS_SEND_MESSAGE_BATCH],
-            Resource: SLS.makeSQSArn(USER_EVENTS_QUEUE),
+            Resource: userEventsQueue.arn,
         },
         consume: {
             Effect: SLS.IamEffect.ALLOW,
@@ -42,14 +40,14 @@ export default SLS.createIamRoleStatements({
                 SLS.IamAction.SQS_GET_QUEUE_ATTRIBUTES,
                 SLS.IamAction.SQS_RECEIVE_MESSAGE,
             ],
-            Resource: SLS.makeSQSArn(USER_EVENTS_QUEUE),
+            Resource: userEventsQueue.arn,
         },
     },
     userEventsTopic: {
         publish: {
             Effect: SLS.IamEffect.ALLOW,
             Action: [SLS.IamAction.SNS_PUBLISH, SLS.IamAction.SNS_PUBLISH_BATCH],
-            Resource: SLS.makeSNSArn(USER_EVENTS_TOPIC),
+            Resource: userEventsTopic.arn,
         },
     },
     invokeCalculateService: {
