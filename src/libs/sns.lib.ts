@@ -13,7 +13,10 @@ import {
     getAwsRegion,
     isDev,
 } from '@lib/aws-client-config.lib';
-import { invokeLocalFunction } from '@lib/serverless-local.lib';
+import {
+    assertLocalHasIamPermission,
+    invokeLocalFunction,
+} from '@lib/serverless-local.lib';
 import type {
     PublishTopicMessageOptions,
 } from '@lib/interfaces/sns.interface';
@@ -97,6 +100,17 @@ const getLocalTopicHandler = (
     localHandler?: string,
 ): string | undefined =>
     localHandler ?? getLocalHandlerMap()[getTopicName(topicArnOrName)];
+
+const assertLocalCanPublishTopicMessage = async (
+    action: 'sns:Publish' | 'sns:PublishBatch',
+    topicArnOrName: string,
+): Promise<void> => {
+    if (!isDev) {
+        return;
+    }
+
+    await assertLocalHasIamPermission(action, getTopicArn(topicArnOrName));
+};
 
 const createTopicRecord = (
     topicArnOrName: string,
@@ -228,6 +242,8 @@ export const publishTopicMessage = async <TMessage extends TopicMessage>(
         return undefined;
     }
 
+    await assertLocalCanPublishTopicMessage('sns:Publish', topicArnOrName);
+
     const response = await snsClient.send(command);
     await dispatchLocalTopicMessage(topicArnOrName, topicMessage, response, options);
 
@@ -255,6 +271,8 @@ export const publishSNS = async <TPayload extends TopicMessage>(
     if (isDryRun()) {
         return undefined;
     }
+
+    await assertLocalCanPublishTopicMessage('sns:Publish', name);
 
     const response = await snsClient.send(command);
     console.debug('r', response);
@@ -304,6 +322,8 @@ export const publishTopicEvents = async <EventType>(
         if (isDryRun()) {
             continue;
         }
+
+        await assertLocalCanPublishTopicMessage('sns:PublishBatch', topicArnOrName);
 
         const response = await snsClient.send(new PublishBatchCommand({
             PublishBatchRequestEntries: entries,

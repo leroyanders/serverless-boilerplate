@@ -1,5 +1,5 @@
 import type { LoginRequest } from '../types/login.type';
-import type { SumResolverReturnType } from './sum-resolver-return.interface';
+import type { CalculateServiceReturnType } from '../../calculate-service/interfaces/calculate-service-return.interface';
 
 export interface LoginUserItem {
     pk: string;
@@ -7,5 +7,5 @@ export interface LoginUserItem {
     userId: string;
     lastLoginAt: string;
     data: LoginRequest;
-    sum: SumResolverReturnType;
+    sum: CalculateServiceReturnType;
 }

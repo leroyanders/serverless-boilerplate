@@ -15,7 +15,10 @@ import {
     getAwsRegion,
     isDev,
 } from '@lib/aws-client-config.lib';
-import { invokeLocalFunction } from '@lib/serverless-local.lib';
+import {
+    assertLocalHasIamPermission,
+    invokeLocalFunction,
+} from '@lib/serverless-local.lib';
 import type {
     SendQueueMessageOptions,
 } from '@lib/interfaces/sqs.interface';
@@ -133,6 +136,17 @@ const getLocalQueueHandler = (
     localHandler?: string,
 ): string | undefined =>
     localHandler ?? getLocalHandlerMap()[getQueueName(queueUrlOrName)];
+
+const assertLocalCanSendQueueMessage = async (
+    action: 'sqs:SendMessage' | 'sqs:SendMessageBatch',
+    queueUrlOrName: string,
+): Promise<void> => {
+    if (!isDev) {
+        return;
+    }
+
+    await assertLocalHasIamPermission(action, getQueueArn(queueUrlOrName));
+};
 
 const createQueueRecord = (
     queueUrlOrName: string,
@@ -261,6 +275,8 @@ export const sendQueueMessage = async <TMessage extends QueueMessage>(
         return undefined;
     }
 
+    await assertLocalCanSendQueueMessage('sqs:SendMessage', queueUrlOrName);
+
     const response = await sqsClient.send(command);
     await dispatchLocalQueueMessage(queueUrlOrName, body, response, options);
 
@@ -303,6 +319,8 @@ export const sendMessage = async <TMessage extends QueueMessage = string>(
     if (isDryRun()) {
         return undefined;
     }
+
+    await assertLocalCanSendQueueMessage('sqs:SendMessage', name);
 
     const response = await sqsClient.send(command);
     console.debug('r', response);
@@ -353,6 +371,8 @@ export const publishQueueEvents = async <EventType>(
             continue;
         }
 
+        await assertLocalCanSendQueueMessage('sqs:SendMessageBatch', queueUrlOrName);
+
         const response = await sqsClient.send(new SendMessageBatchCommand({
             Entries: entries,
             QueueUrl: getQueueUrl(queueUrlOrName),
@@ -402,6 +422,8 @@ export const sendBatchMessage = async <TMessage extends QueueMessage>(
     if (isDryRun()) {
         return responses;
     }
+
+    await assertLocalCanSendQueueMessage('sqs:SendMessageBatch', name);
 
     do {
         const batch = entries.splice(0, BATCH_SIZE);

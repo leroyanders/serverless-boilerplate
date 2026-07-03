@@ -11,7 +11,12 @@
     "sls:user-service:print": "yarn sls:user-service print",
     "sls:user-service:deploy": "yarn sls:user-service deploy",
     "sls:user-service:remove": "yarn sls:user-service remove",
-    "sls:user-service:invoke": "yarn sls:user-service invoke local"
+    "sls:user-service:invoke": "yarn sls:user-service invoke local",
+    "sls:calculate-service": "zsh -c 'pushd src/services/calculate-service > /dev/null && sls \"$@\"; exit_code=$?; popd > /dev/null; exit $exit_code' --",
+    "sls:calculate-service:print": "yarn sls:calculate-service print",
+    "sls:calculate-service:deploy": "yarn sls:calculate-service deploy",
+    "sls:calculate-service:remove": "yarn sls:calculate-service remove",
+    "sls:calculate-service:invoke": "yarn sls:calculate-service invoke local"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.162",

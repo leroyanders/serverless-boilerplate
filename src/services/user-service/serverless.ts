@@ -8,26 +8,23 @@ import {
     CFN_ARN_ATTRIBUTE,
     HTTP_GET_METHOD,
     HTTP_POST_METHOD,
-    INVOKE_SUM_RESOLVER_FN,
-    INVOKE_SUM_RESOLVER_HANDLER,
     REQUEST_AUTHORIZER_TYPE,
     ROOT_HTTP_PATH,
-    SERVERLESS_SERVICE_NAME,
+    SERVERLESS_USER_SERVICE_NAME,
     SERVERLESS_USER_DOMAIN,
-    SERVERLESS_USER_STACK,
     SQS_EVENT_BATCH_SIZE,
     SQS_REPORT_BATCH_ITEM_FAILURES,
     SSM_USER_SERVICE_DOMAIN_RESOURCE,
-    TEST_HANDLE_QUEUE_MESSAGE_FN,
-    TEST_HANDLE_QUEUE_MESSAGE_HANDLER,
-    TEST_HANDLE_TOPIC_MESSAGE_FN,
-    TEST_HANDLE_TOPIC_MESSAGE_HANDLER,
-    TEST_PUBLISH_TOPIC_MESSAGE_FN,
-    TEST_PUBLISH_TOPIC_MESSAGE_HANDLER,
-    TEST_SNS_HTTP_PATH,
-    TEST_SEND_QUEUE_MESSAGE_FN,
-    TEST_SEND_QUEUE_MESSAGE_HANDLER,
-    TEST_SQS_HTTP_PATH,
+    QUEUE_HANDLE_QUEUE_MESSAGE_FN,
+    QUEUE_HANDLE_QUEUE_MESSAGE_HANDLER,
+    QUEUE_HANDLE_TOPIC_MESSAGE_FN,
+    QUEUE_HANDLE_TOPIC_MESSAGE_HANDLER,
+    QUEUE_PUBLISH_TOPIC_MESSAGE_FN,
+    QUEUE_PUBLISH_TOPIC_MESSAGE_HANDLER,
+    QUEUE_SNS_HTTP_PATH,
+    QUEUE_SEND_QUEUE_MESSAGE_FN,
+    QUEUE_SEND_QUEUE_MESSAGE_HANDLER,
+    QUEUE_SQS_HTTP_PATH,
 } from '@constants/service.const';
 import * as SLS from '../sls.defaults';
 import {
@@ -44,7 +41,7 @@ import statements from './__sls/roles';
 module.exports = {
     ...SLS.serverless,
 
-    service: SERVERLESS_SERVICE_NAME,
+    service: SERVERLESS_USER_SERVICE_NAME,
     provider: {
         ...SLS.serverless.provider,
         iam: {
@@ -75,18 +72,13 @@ module.exports = {
             ],
         },
 
-        [INVOKE_SUM_RESOLVER_FN]: {
-            name: `${SERVERLESS_USER_STACK}-${INVOKE_SUM_RESOLVER_FN}`,
-            handler: INVOKE_SUM_RESOLVER_HANDLER,
-        },
-
-        [TEST_SEND_QUEUE_MESSAGE_FN]: {
-            handler: TEST_SEND_QUEUE_MESSAGE_HANDLER,
+        [QUEUE_SEND_QUEUE_MESSAGE_FN]: {
+            handler: QUEUE_SEND_QUEUE_MESSAGE_HANDLER,
             events: [
                 {
                     http: {
                         method: HTTP_POST_METHOD,
-                        path: TEST_SQS_HTTP_PATH,
+                        path: QUEUE_SQS_HTTP_PATH,
                         authorizer: {
                             name: AUTHORIZER_FN,
                             type: REQUEST_AUTHORIZER_TYPE,
@@ -96,13 +88,13 @@ module.exports = {
             ],
         },
 
-        [TEST_PUBLISH_TOPIC_MESSAGE_FN]: {
-            handler: TEST_PUBLISH_TOPIC_MESSAGE_HANDLER,
+        [QUEUE_PUBLISH_TOPIC_MESSAGE_FN]: {
+            handler: QUEUE_PUBLISH_TOPIC_MESSAGE_HANDLER,
             events: [
                 {
                     http: {
                         method: HTTP_POST_METHOD,
-                        path: TEST_SNS_HTTP_PATH,
+                        path: QUEUE_SNS_HTTP_PATH,
                         authorizer: {
                             name: AUTHORIZER_FN,
                             type: REQUEST_AUTHORIZER_TYPE,
@@ -112,8 +104,8 @@ module.exports = {
             ],
         },
 
-        [TEST_HANDLE_QUEUE_MESSAGE_FN]: {
-            handler: TEST_HANDLE_QUEUE_MESSAGE_HANDLER,
+        [QUEUE_HANDLE_QUEUE_MESSAGE_FN]: {
+            handler: QUEUE_HANDLE_QUEUE_MESSAGE_HANDLER,
             events: [
                 {
                     sqs: {
@@ -127,8 +119,8 @@ module.exports = {
             ],
         },
 
-        [TEST_HANDLE_TOPIC_MESSAGE_FN]: {
-            handler: TEST_HANDLE_TOPIC_MESSAGE_HANDLER,
+        [QUEUE_HANDLE_TOPIC_MESSAGE_FN]: {
+            handler: QUEUE_HANDLE_TOPIC_MESSAGE_HANDLER,
             events: [
                 {
                     sns: {

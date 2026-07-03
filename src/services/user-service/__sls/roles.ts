@@ -1,6 +1,5 @@
 import {
-    INVOKE_SUM_RESOLVER_FN,
-    SERVERLESS_USER_STACK,
+    SERVERLESS_CALCULATE_SERVICE_NAME,
 } from '@constants/service.const';
 import * as SLS from '../../sls.defaults';
 import {
@@ -53,9 +52,9 @@ export default SLS.createIamRoleStatements({
             Resource: SLS.makeSNSArn(USER_EVENTS_TOPIC),
         },
     },
-    invokeSumResolver: {
+    invokeCalculateService: {
         Effect: 'Allow',
         Action: ['lambda:InvokeFunction'],
-        Resource: SLS.makeResolverArn(INVOKE_SUM_RESOLVER_FN, SERVERLESS_USER_STACK),
+        Resource: SLS.makeLambdaArn(SERVERLESS_CALCULATE_SERVICE_NAME),
     },
 } satisfies SLS.IamRoleStatementGroup);

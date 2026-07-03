@@ -4,7 +4,7 @@ import {
     USERS_TABLE_DEFAULT,
 } from '@constants/service.const';
 import { lambdaHandler } from '@lib/lambda-handler.lib';
-import { invokeSum } from '../../invokers/sum.invoker';
+import { invokeCalculate } from '../../../../calculate-service/handlers/invokers/calculate.invoker';
 import { getDB } from '@lib/dynamodb.lib';
 
 import type { LoginResponse } from '../../../interfaces/login-response.interface';
@@ -14,7 +14,7 @@ import type { LoginRequest } from '../../../types';
 import status from 'http-status-codes';
 
 export const handler = lambdaHandler<LoginRequest, LoginResponse>(async ({ data, ctx }) => {
-    const sum = await invokeSum({
+    const sum = await invokeCalculate({
         a: 10,
         b: 25,
     });

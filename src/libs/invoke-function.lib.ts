@@ -12,21 +12,34 @@ const toResolverName = (functionName: string): string =>
         ? functionName
         : `${functionName}Resolver`;
 
+const toFunctionName = (
+    serviceName: string,
+    resolverName: string,
+): string =>
+    serviceName.endsWith('-service')
+        ? serviceName
+        : `${serviceName}-${resolverName}`;
+
 export const invokeFunction = async <TResult, TParams = void>(
-    stack: string,
+    serviceName: string,
     functionName: string,
     params: TParams,
 ): Promise<TResult> => {
     const resolverName = toResolverName(functionName);
+    const targetFunctionName = toFunctionName(serviceName, resolverName);
 
     if (isDev) {
-        const stdout = await invokeLocalFunction(resolverName, params);
+        const stdout = await invokeLocalFunction(
+            resolverName,
+            params,
+            serviceName,
+        );
 
         return JSON.parse(stdout) as TResult;
     }
 
     const command = new InvokeCommand({
-        FunctionName: `${stack}-${resolverName}`,
+        FunctionName: targetFunctionName,
         InvocationType: 'RequestResponse',
         Payload: Buffer.from(JSON.stringify(params)),
     });

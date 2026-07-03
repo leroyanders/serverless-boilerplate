@@ -31,13 +31,13 @@ flowchart LR
     client[Client] --> gateway[API Gateway]
     gateway --> auth[Request Authorizer]
     auth --> api[apiUserLogin Lambda]
-    api --> invoker[invokeSum helper]
-    invoker --> resolver[invokeSumResolver Lambda]
-    resolver --> api
+    api --> invoker[invokeCalculate helper]
+    invoker --> calculator[calculate-service Lambda]
+    calculator --> api
     api --> client
 ```
 
-The API handler stays thin: it receives normalized request data, reads authenticated context, and delegates internal work to a resolver Lambda.
+The API handler stays thin: it receives normalized request data, reads authenticated context, and delegates calculation work to the separate `calculate-service` Lambda.
 
 ## Project Structure
 
@@ -59,6 +59,17 @@ The API handler stays thin: it receives normalized request data, reads authentic
 │   │   └── sqs.lib.ts
 │   └── services
 │       ├── sls.defaults.ts
+│       ├── calculate-service
+│       │   ├── __test
+│       │   │   └── event.json
+│       │   ├── handlers
+│       │   │   ├── invokers
+│       │   │   │   └── calculate.invoker.ts
+│       │   │   └── resolvers
+│       │   │       └── calculate.resolver.ts
+│       │   ├── interfaces
+│       │   ├── serverless.ts
+│       │   └── types
 │       └── user-service
 │           ├── __test
 │           │   ├── event.json
@@ -85,10 +96,6 @@ The API handler stays thin: it receives normalized request data, reads authentic
 │           │   │   │   └── user-events.ts
 │           │   │   └── sqs
 │           │   │       └── user-events.ts
-│           │   ├── invokers
-│           │   │   └── sum.invoker.ts
-│           │   └── resolvers
-│           │       └── sum.resolver.ts
 │           ├── interfaces
 │           ├── serverless.ts
 │           └── types
@@ -122,13 +129,13 @@ cp .env.example .env
 
 This workspace already includes a local `.env` with LocalStack-friendly AWS values. Serverless loads it through `serverless-dotenv-plugin`, and the AWS helper clients also load it directly for local code paths.
 
-Serverless commands can be run from the project root through package scripts. The scripts use `pushd` internally to execute Serverless from the `user-service` directory.
+Serverless commands can be run from the project root through package scripts. The scripts use `pushd` internally to execute Serverless from the requested service directory.
 
-Invoke the sample resolver locally:
+Invoke the calculation service locally:
 
 ```bash
-yarn sls:user-service invoke local \
-  --function invokeSumResolver \
+yarn sls:calculate-service invoke local \
+  --function calculateServiceResolver \
   --data '{"a":10,"b":25}'
 ```
 
@@ -152,12 +159,17 @@ yarn sls:user-service invoke local \
 | `yarn sls:user-service:deploy` | Deploy the user service. |
 | `yarn sls:user-service:remove` | Remove the user service stack. |
 | `yarn sls:user-service:invoke` | Run `sls invoke local` for the user service. |
+| `yarn sls:calculate-service <command>` | Run any Serverless command inside `src/services/calculate-service`. |
+| `yarn sls:calculate-service:print` | Print the compiled calculate service config. |
+| `yarn sls:calculate-service:deploy` | Deploy the calculate service. |
+| `yarn sls:calculate-service:remove` | Remove the calculate service stack. |
+| `yarn sls:calculate-service:invoke` | Run `sls invoke local` for the calculate service. |
 
 ## Dotenv
 
 Environment variables live in `.env`. The committed `.env.example` documents every required key.
 
-The Serverless service uses `serverless-dotenv-plugin` with `path: ../../../.env`, because the service config lives in `src/services/user-service`. `src/services/sls.defaults.ts` also loads the same `.env` before building resources and IAM statements. Shared AWS helpers load the root `.env` before creating SDK clients.
+Serverless services use `serverless-dotenv-plugin` with `path: ../../../.env`, because service configs live under `src/services/<service>`. `src/services/sls.defaults.ts` also loads the same `.env` before building resources and IAM statements. Shared AWS helpers load the root `.env` before creating SDK clients.
 
 ## Infrastructure Resources
 
@@ -256,18 +268,26 @@ yarn sls:user-service:invoke \
 
 ## Deploy
 
-Deploy the user service:
+Deploy the calculate service first, then the user service:
 
 ```bash
+yarn sls:calculate-service deploy \
+  --stage dev \
+  --region eu-central-1
+
 yarn sls:user-service deploy \
   --stage dev \
   --region eu-central-1
 ```
 
-Remove the deployed stack:
+Remove the deployed stacks:
 
 ```bash
 yarn sls:user-service remove \
+  --stage dev \
+  --region eu-central-1
+
+yarn sls:calculate-service remove \
   --stage dev \
   --region eu-central-1
 ```
@@ -395,7 +415,7 @@ export const handler = snsHandler<{ event: string }>(async ({ data, messageId })
 3. A valid JWT adds `userId` to the Lambda authorizer context.
 4. `lambdaHandler` normalizes request input into `{ data, ctx }`.
 5. The API handler calls a typed invoker.
-6. The invoker calls a resolver locally in development or through AWS Lambda in deployed environments.
+6. The invoker calls `calculate-service` locally in development or through AWS Lambda in deployed environments.
 7. The handler returns a JSON API Gateway response.
 
 ## Adding A New Resolver

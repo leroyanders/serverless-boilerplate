@@ -6,19 +6,29 @@ import {
     DynamoDBDocumentClient,
     GetCommand,
     GetCommandInput,
+    GetCommandOutput,
     PutCommand,
     PutCommandInput,
     PutCommandOutput,
     QueryCommand,
     QueryCommandInput,
+    QueryCommandOutput,
     ScanCommand,
     ScanCommandInput,
+    ScanCommandOutput,
     UpdateCommand,
     UpdateCommandInput,
+    UpdateCommandOutput,
 } from '@aws-sdk/lib-dynamodb';
 import dynoexpr from '@tuplo/dynoexpr';
 import type { IDynoexprArgs } from '@tuplo/dynoexpr';
-import { getAwsClientConfig } from '@lib/aws-client-config.lib';
+import {
+    getAwsAccountId,
+    getAwsClientConfig,
+    getAwsRegion,
+    isDev,
+} from '@lib/aws-client-config.lib';
+import { assertLocalHasIamPermission } from '@lib/serverless-local.lib';
 import type {
     DynamoExpressionOptions,
     DynamoItem,
@@ -41,6 +51,52 @@ export const dynamoDocumentClient = DynamoDBDocumentClient.from(dynamoClient, {
 
 const withExpressions = <TInput extends object>(input: TInput): TInput =>
     dynoexpr<TInput>(input as TInput & IDynoexprArgs);
+
+type DynamoCommandAccess = {
+    action: string;
+    resource: string;
+};
+
+type DynamoDocumentCommand = object & {
+    input?: unknown;
+};
+
+const getDynamoResource = (
+    tableName: string,
+    indexName?: string,
+): string => {
+    const tableArn = `arn:aws:dynamodb:${getAwsRegion()}:${getAwsAccountId()}:table/${tableName}`;
+
+    return indexName
+        ? `${tableArn}/index/${indexName}`
+        : tableArn;
+};
+
+const getDynamoCommandAccess = (
+    action: string,
+    tableName: string,
+    indexName?: unknown,
+): DynamoCommandAccess => ({
+    action,
+    resource: getDynamoResource(
+        tableName,
+        typeof indexName === 'string' ? indexName : undefined,
+    ),
+});
+
+const assertLocalCanSendDynamoCommand = async (
+    access?: DynamoCommandAccess,
+): Promise<void> => {
+    if (!isDev) {
+        return;
+    }
+
+    if (!access) {
+        throw new Error('Cannot assert local IAM permission for DynamoDB command');
+    }
+
+    await assertLocalHasIamPermission(access.action, access.resource);
+};
 
 export const getItem = async <TItem = DynamoItem>(
     tableName: string,
@@ -82,21 +138,30 @@ export const scanItems = async <TItem = DynamoItem>(
 ): Promise<TItem[]> =>
     getDB(tableName).scan<TItem>(options);
 
-export const sendDynamoCommand = <TOutput>(
-    command: Parameters<typeof dynamoDocumentClient.send>[0],
-): Promise<TOutput> =>
-    dynamoDocumentClient.send(command) as Promise<TOutput>;
+export const sendDynamoCommand = async <TOutput>(
+    command: DynamoDocumentCommand,
+    access?: DynamoCommandAccess,
+): Promise<TOutput> => {
+    await assertLocalCanSendDynamoCommand(access);
+
+    return dynamoDocumentClient.send(
+        command as Parameters<typeof dynamoDocumentClient.send>[0],
+    ) as Promise<TOutput>;
+};
 
 export const getDB = (tableName: string) => ({
     get: async <TItem = DynamoItem>(
         key: DynamoKey,
         options: DynamoExpressionOptions<GetCommandInput> = {},
     ): Promise<TItem | undefined> => {
-        const response = await dynamoDocumentClient.send(new GetCommand(withExpressions<GetCommandInput>({
-            ...options,
-            TableName: tableName,
-            Key: key,
-        })));
+        const response = await sendDynamoCommand<GetCommandOutput>(
+            new GetCommand(withExpressions<GetCommandInput>({
+                ...options,
+                TableName: tableName,
+                Key: key,
+            })),
+            getDynamoCommandAccess('dynamodb:GetItem', tableName),
+        );
 
         return response.Item as TItem | undefined;
     },
@@ -105,21 +170,27 @@ export const getDB = (tableName: string) => ({
         item: TItem,
         options: DynamoExpressionOptions<PutCommandInput> = {},
     ): Promise<PutCommandOutput> =>
-        dynamoDocumentClient.send(new PutCommand(withExpressions<PutCommandInput>({
-            ...options,
-            TableName: tableName,
-            Item: item as DynamoItem,
-        }))),
+        sendDynamoCommand<PutCommandOutput>(
+            new PutCommand(withExpressions<PutCommandInput>({
+                ...options,
+                TableName: tableName,
+                Item: item as DynamoItem,
+            })),
+            getDynamoCommandAccess('dynamodb:PutItem', tableName),
+        ),
 
     update: async <TItem = DynamoItem>(
         key: DynamoKey,
         options: DynamoExpressionOptions<UpdateCommandInput>,
     ): Promise<TItem | undefined> => {
-        const response = await dynamoDocumentClient.send(new UpdateCommand(withExpressions<UpdateCommandInput>({
-            ...options,
-            TableName: tableName,
-            Key: key,
-        })));
+        const response = await sendDynamoCommand<UpdateCommandOutput>(
+            new UpdateCommand(withExpressions<UpdateCommandInput>({
+                ...options,
+                TableName: tableName,
+                Key: key,
+            })),
+            getDynamoCommandAccess('dynamodb:UpdateItem', tableName),
+        );
 
         return response.Attributes as TItem | undefined;
     },
@@ -128,11 +199,14 @@ export const getDB = (tableName: string) => ({
         key: DynamoKey,
         options: DynamoExpressionOptions<DeleteCommandInput> = {},
     ): Promise<TItem | undefined> => {
-        const response: DeleteCommandOutput = await dynamoDocumentClient.send(new DeleteCommand(withExpressions<DeleteCommandInput>({
-            ...options,
-            TableName: tableName,
-            Key: key,
-        })));
+        const response = await sendDynamoCommand<DeleteCommandOutput>(
+            new DeleteCommand(withExpressions<DeleteCommandInput>({
+                ...options,
+                TableName: tableName,
+                Key: key,
+            })),
+            getDynamoCommandAccess('dynamodb:DeleteItem', tableName),
+        );
 
         return response.Attributes as TItem | undefined;
     },
@@ -140,10 +214,13 @@ export const getDB = (tableName: string) => ({
     query: async <TItem = DynamoItem>(
         options: DynamoExpressionOptions<QueryCommandInput>,
     ): Promise<TItem[]> => {
-        const response = await dynamoDocumentClient.send(new QueryCommand(withExpressions<QueryCommandInput>({
-            ...options,
-            TableName: tableName,
-        })));
+        const response = await sendDynamoCommand<QueryCommandOutput>(
+            new QueryCommand(withExpressions<QueryCommandInput>({
+                ...options,
+                TableName: tableName,
+            })),
+            getDynamoCommandAccess('dynamodb:Query', tableName, options.IndexName),
+        );
 
         return (response.Items ?? []) as TItem[];
     },
@@ -151,10 +228,13 @@ export const getDB = (tableName: string) => ({
     scan: async <TItem = DynamoItem>(
         options: DynamoExpressionOptions<ScanCommandInput> = {},
     ): Promise<TItem[]> => {
-        const response = await dynamoDocumentClient.send(new ScanCommand(withExpressions<ScanCommandInput>({
-            ...options,
-            TableName: tableName,
-        })));
+        const response = await sendDynamoCommand<ScanCommandOutput>(
+            new ScanCommand(withExpressions<ScanCommandInput>({
+                ...options,
+                TableName: tableName,
+            })),
+            getDynamoCommandAccess('dynamodb:Scan', tableName, options.IndexName),
+        );
 
         return (response.Items ?? []) as TItem[];
     },
