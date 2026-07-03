@@ -4,6 +4,7 @@ node_modules/
 # serverless build and deploy artifacts
 .serverless/
 .esbuild/
+src/services/*/.esbuild/
 src/services/*/authorizer.js
 
 # typescript / build output

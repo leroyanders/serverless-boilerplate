@@ -7,10 +7,10 @@ import {
 import type { HandledEventBridgeRecord } from '../../../interfaces/handled-eventbridge-record.interface';
 import type { UserEventBridgeEvent } from '../../../interfaces/user-eventbridge-event.interface';
 
-const LISTENER = 'user-events-primary';
+const LISTENER = 'user-events-projection';
 const DEFAULT_CALCULATION = {
-    a: 1,
-    b: 2,
+    a: 100,
+    b: 200,
 };
 
 export const handler = eventBridgeHandler<
@@ -27,7 +27,7 @@ export const handler = eventBridgeHandler<
         source,
     };
 
-    log.info('received eventbridge event', {
+    log.info('received eventbridge projection event', {
         ...result,
         message: data,
     });

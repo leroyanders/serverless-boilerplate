@@ -1,0 +1,16 @@
+{
+  "version": "0",
+  "id": "local-eventbridge-projection-test",
+  "detail-type": "user.events.test",
+  "source": "user-service",
+  "account": "000000000000",
+  "time": "2026-07-03T00:00:00.000Z",
+  "region": "eu-central-1",
+  "resources": [
+    "arn:aws:events:eu-central-1:000000000000:event-bus/user-events"
+  ],
+  "detail": {
+    "event": "test",
+    "message": "hello eventbridge projection"
+  }
+}

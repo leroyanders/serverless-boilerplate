@@ -16,7 +16,17 @@
     "sls:calculate-service:print": "yarn sls:calculate-service print",
     "sls:calculate-service:deploy": "yarn sls:calculate-service deploy",
     "sls:calculate-service:remove": "yarn sls:calculate-service remove",
-    "sls:calculate-service:invoke": "yarn sls:calculate-service invoke local"
+    "sls:calculate-service:invoke": "yarn sls:calculate-service invoke local",
+    "sls:ebh-audit-service": "zsh -c 'pushd src/services/ebh-audit-service > /dev/null && sls \"$@\"; exit_code=$?; popd > /dev/null; exit $exit_code' --",
+    "sls:ebh-audit-service:print": "yarn sls:ebh-audit-service print",
+    "sls:ebh-audit-service:deploy": "yarn sls:ebh-audit-service deploy",
+    "sls:ebh-audit-service:remove": "yarn sls:ebh-audit-service remove",
+    "sls:ebh-audit-service:invoke": "yarn sls:ebh-audit-service invoke local",
+    "sls:ebh-projection-service": "zsh -c 'pushd src/services/ebh-projection-service > /dev/null && sls \"$@\"; exit_code=$?; popd > /dev/null; exit $exit_code' --",
+    "sls:ebh-projection-service:print": "yarn sls:ebh-projection-service print",
+    "sls:ebh-projection-service:deploy": "yarn sls:ebh-projection-service deploy",
+    "sls:ebh-projection-service:remove": "yarn sls:ebh-projection-service remove",
+    "sls:ebh-projection-service:invoke": "yarn sls:ebh-projection-service invoke local"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.162",

@@ -40,6 +40,16 @@ import { userEventsEventBus } from './__sls/ebh.def';
 import { userEventsTopic } from './__sls/sns.def';
 import { userEventsQueue } from './__sls/sqs.def';
 
+const userEventsEventBridgeTrigger = {
+    eventBridge: {
+        eventBus: userEventsEventBus.arn,
+        pattern: {
+            'detail-type': [USER_EVENTS_EVENT_DETAIL_TYPE],
+            source: [USER_EVENTS_EVENT_SOURCE],
+        },
+    },
+};
+
 module.exports = {
     ...SLS.serverless,
 
@@ -154,15 +164,7 @@ module.exports = {
         [QUEUE_HANDLE_EVENTBRIDGE_EVENT_FN]: {
             handler: QUEUE_HANDLE_EVENTBRIDGE_EVENT_HANDLER,
             events: [
-                {
-                    eventBridge: {
-                        eventBus: userEventsEventBus.arn,
-                        pattern: {
-                            'detail-type': [USER_EVENTS_EVENT_DETAIL_TYPE],
-                            source: [USER_EVENTS_EVENT_SOURCE],
-                        },
-                    },
-                },
+                userEventsEventBridgeTrigger,
             ],
         },
     },

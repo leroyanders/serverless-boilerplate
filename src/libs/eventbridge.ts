@@ -1,3 +1,5 @@
+import { existsSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import {
     EventBridgeClient,
     PutEventsCommand,
@@ -15,7 +17,8 @@ import {
     assertLocalHasIamPermission,
     getServiceRoot,
     getLocalServerlessConfig,
-    invokeLocalFunction,
+    hasServerlessConfig,
+    invokeLocalFunctionInServiceRoot,
 } from '@lib/serverless-local';
 import log from '@lib/logger';
 import type {
@@ -72,6 +75,12 @@ type LocalFunctionEvent = {
     eventBridge?: LocalEventBridgeConfig;
 };
 
+type LocalEventBridgeListener = {
+    functionName: string;
+    serviceName: string;
+    serviceRoot: string;
+};
+
 const getLocalHandlerMap = (): Record<string, string[]> =>
     (process.env.LOCAL_EVENTBRIDGE_EVENT_HANDLERS ?? '')
         .split(',')
@@ -125,37 +134,115 @@ const eventBridgeConfigMatches = (
         && eventPatternMatchesValue(config.pattern?.['detail-type'], detailType);
 };
 
+const getRepoRoot = (serviceRoot: string): string => {
+    const candidates = [
+        process.env.INIT_CWD,
+        path.resolve(serviceRoot, '../../..'),
+        process.cwd(),
+    ].filter((root): root is string => Boolean(root));
+
+    return candidates.find((root) => existsSync(path.resolve(root, 'src/services')))
+        ?? path.resolve(serviceRoot, '../../..');
+};
+
+const toServiceRoot = (repoRoot: string, serviceRoot: string): string =>
+    path.isAbsolute(serviceRoot)
+        ? serviceRoot
+        : path.resolve(repoRoot, serviceRoot);
+
+const getConfiguredEventBridgeServiceRoots = (
+    currentServiceRoot: string,
+    repoRoot: string,
+): string[] =>
+    (process.env.LOCAL_EVENTBRIDGE_SERVICE_ROOTS ?? '')
+        .split(',')
+        .map((serviceRoot) => serviceRoot.trim())
+        .filter(Boolean)
+        .map((serviceRoot) => toServiceRoot(repoRoot, serviceRoot))
+        .filter((serviceRoot) => serviceRoot === currentServiceRoot || hasServerlessConfig(serviceRoot));
+
+const discoverEventBridgeServiceRoots = (
+    currentServiceRoot: string,
+    repoRoot: string,
+): string[] => {
+    const servicesRoot = path.resolve(repoRoot, 'src/services');
+
+    if (!existsSync(servicesRoot)) {
+        return [currentServiceRoot];
+    }
+
+    const discoveredServiceRoots = readdirSync(servicesRoot, {
+        withFileTypes: true,
+    })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => path.resolve(servicesRoot, entry.name))
+        .filter(hasServerlessConfig);
+
+    return [currentServiceRoot, ...discoveredServiceRoots];
+};
+
+const getLocalEventBridgeServiceRoots = (currentServiceRoot: string): string[] => {
+    const repoRoot = getRepoRoot(currentServiceRoot);
+    const configuredServiceRoots = getConfiguredEventBridgeServiceRoots(currentServiceRoot, repoRoot);
+    const serviceRoots = configuredServiceRoots.length
+        ? [currentServiceRoot, ...configuredServiceRoots]
+        : discoverEventBridgeServiceRoots(currentServiceRoot, repoRoot);
+
+    return Array.from(new Set(serviceRoots));
+};
+
 const getLocalEventBridgeListeners = async (
     eventBusName: string,
     source: string,
     detailType: string,
     localHandler?: string,
-): Promise<string[]> => {
+): Promise<LocalEventBridgeListener[]> => {
     const handlers = getLocalHandlerMap();
     const busName = getEventBridgeName(eventBusName);
-    const mappedHandlers = [
+    const currentServiceRoot = getServiceRoot();
+    const currentServiceName = path.basename(currentServiceRoot);
+    const mappedListeners = [
+        ...(localHandler ? [localHandler] : []),
         ...(handlers[`${busName}:${source}:${detailType}`] ?? []),
         ...(handlers[`${source}:${detailType}`] ?? []),
         ...(handlers[detailType] ?? []),
-    ];
-    const config = await getLocalServerlessConfig(getServiceRoot());
-    const discoveredHandlers = Object.entries(config.functions ?? {})
-        .filter(([, functionConfig]) =>
-            (functionConfig.events ?? []).some((event): boolean => {
-                const localEvent = event as LocalFunctionEvent;
-                const eventBridge = localEvent.eventBridge;
+    ].map((functionName): LocalEventBridgeListener => ({
+        functionName,
+        serviceName: currentServiceName,
+        serviceRoot: currentServiceRoot,
+    }));
+    const serviceRoots = getLocalEventBridgeServiceRoots(currentServiceRoot);
+    const discoveredListenerGroups = await Promise.all(serviceRoots.map(async (serviceRoot) => {
+        const config = await getLocalServerlessConfig(serviceRoot);
+        const serviceName = config.service ?? path.basename(serviceRoot);
 
-                return eventBridge
-                    ? eventBridgeConfigMatches(eventBridge, eventBusName, source, detailType)
-                    : false;
-            }))
-        .map(([functionName]) => functionName);
+        return Object.entries(config.functions ?? {})
+            .filter(([, functionConfig]) =>
+                (functionConfig.events ?? []).some((event): boolean => {
+                    const localEvent = event as LocalFunctionEvent;
+                    const eventBridge = localEvent.eventBridge;
 
-    return Array.from(new Set([
-        ...(localHandler ? [localHandler] : []),
-        ...mappedHandlers,
-        ...discoveredHandlers,
-    ]));
+                    return eventBridge
+                        ? eventBridgeConfigMatches(eventBridge, eventBusName, source, detailType)
+                        : false;
+                }))
+            .map(([functionName]): LocalEventBridgeListener => ({
+                functionName,
+                serviceName,
+                serviceRoot,
+            }));
+    }));
+    const discoveredListeners = discoveredListenerGroups.reduce<LocalEventBridgeListener[]>(
+        (result, listeners) => result.concat(listeners),
+        [],
+    );
+    const uniqueListeners = new Map<string, LocalEventBridgeListener>();
+
+    for (const listener of [...mappedListeners, ...discoveredListeners]) {
+        uniqueListeners.set(`${listener.serviceRoot}:${listener.functionName}`, listener);
+    }
+
+    return Array.from(uniqueListeners.values());
 };
 
 const assertLocalCanPutEvents = async (eventBusName: string): Promise<void> => {
@@ -251,14 +338,19 @@ const dispatchLocalEventBridgeEvent = async (
         options,
     );
 
-    for (const handler of handlers) {
-        const output = await invokeLocalFunction(handler, event);
+    for (const listener of handlers) {
+        const output = await invokeLocalFunctionInServiceRoot(
+            listener.functionName,
+            event,
+            listener.serviceRoot,
+        );
 
         log.info('locally dispatched eventbridge event', {
             detailType,
             eventBus: getEventBridgeName(eventBus),
-            handler,
+            handler: listener.functionName,
             output,
+            service: listener.serviceName,
             source,
         });
     }

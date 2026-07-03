@@ -23,6 +23,7 @@ type ServerlessPrintConfig = {
             };
         };
     };
+    service?: string;
 };
 
 const roleStatementsCache = new Map<string, LocalIamRoleStatement[]>();
@@ -31,7 +32,7 @@ const serverlessConfigCache = new Map<string, ServerlessPrintConfig>();
 export const getServiceRoot = (): string =>
     process.env.PWD || process.cwd();
 
-const hasServerlessConfig = (serviceRoot: string): boolean =>
+export const hasServerlessConfig = (serviceRoot: string): boolean =>
     [
         'serverless.ts',
         'serverless.js',
@@ -142,6 +143,10 @@ export const getLocalServerlessConfig = async (
         'json',
     ], {
         cwd: serviceRoot,
+        env: {
+            ...process.env,
+            PWD: serviceRoot,
+        },
     });
 
     const config = JSON.parse(stdout) as ServerlessPrintConfig;
@@ -208,6 +213,14 @@ export const invokeLocalFunction = async (
         );
     }
 
+    return invokeLocalFunctionInServiceRoot(functionName, event, serviceRoot);
+};
+
+export const invokeLocalFunctionInServiceRoot = async (
+    functionName: string,
+    event: unknown,
+    serviceRoot: string,
+): Promise<string> => {
     const { stdout } = await execa(resolveSlsBin(serviceRoot), [
         'invoke',
         'local',
@@ -217,6 +230,10 @@ export const invokeLocalFunction = async (
         JSON.stringify(event),
     ], {
         cwd: serviceRoot,
+        env: {
+            ...process.env,
+            PWD: serviceRoot,
+        },
     });
 
     return stdout;

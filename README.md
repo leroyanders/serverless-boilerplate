@@ -73,6 +73,30 @@ The API handler stays thin: it receives normalized request data, reads authentic
 │   │   │   ├── interfaces
 │   │   │   ├── serverless.ts
 │   │   │   └── types
+│   │   ├── ebh-audit-service
+│   │   │   ├── __sls
+│   │   │   │   ├── const.ts
+│   │   │   │   └── roles.ts
+│   │   │   ├── __test
+│   │   │   │   └── ebh-event.json
+│   │   │   ├── handlers
+│   │   │   │   └── events
+│   │   │   │       └── ebh
+│   │   │   │           └── user-events-audit.ts
+│   │   │   ├── interfaces
+│   │   │   └── serverless.ts
+│   │   ├── ebh-projection-service
+│   │   │   ├── __sls
+│   │   │   │   ├── const.ts
+│   │   │   │   └── roles.ts
+│   │   │   ├── __test
+│   │   │   │   └── ebh-event.json
+│   │   │   ├── handlers
+│   │   │   │   └── events
+│   │   │   │       └── ebh
+│   │   │   │           └── user-events-projection.ts
+│   │   │   ├── interfaces
+│   │   │   └── serverless.ts
 │   │   └── user-service
 │   │       ├── __sls
 │   │       │   ├── const.ts
@@ -174,6 +198,12 @@ yarn sls:user-service invoke local \
 | `yarn sls:calculate-service:deploy` | Deploy the calculate service. |
 | `yarn sls:calculate-service:remove` | Remove the calculate service stack. |
 | `yarn sls:calculate-service:invoke` | Run `sls invoke local` for the calculate service. |
+| `yarn sls:ebh-audit-service <command>` | Run any Serverless command inside `src/services/ebh-audit-service`. |
+| `yarn sls:ebh-audit-service:print` | Print the compiled EventBridge audit service config. |
+| `yarn sls:ebh-audit-service:invoke` | Run `sls invoke local` for the EventBridge audit service. |
+| `yarn sls:ebh-projection-service <command>` | Run any Serverless command inside `src/services/ebh-projection-service`. |
+| `yarn sls:ebh-projection-service:print` | Print the compiled EventBridge projection service config. |
+| `yarn sls:ebh-projection-service:invoke` | Run `sls invoke local` for the EventBridge projection service. |
 
 ## Dotenv
 
@@ -266,10 +296,11 @@ Local producer-to-consumer dispatch is controlled by `.env` maps:
 ```bash
 LOCAL_SQS_EVENT_HANDLERS=user-events=testHandleQueueMessage
 LOCAL_SNS_EVENT_HANDLERS=user-events=testHandleTopicMessage
-LOCAL_EVENTBRIDGE_EVENT_HANDLERS=user-events:user-service:user.events.test=testHandleEventBridgeEvent
+LOCAL_EVENTBRIDGE_EVENT_HANDLERS=
+LOCAL_EVENTBRIDGE_SERVICE_ROOTS=
 ```
 
-That means `testSendQueueMessage` sends to the local SQS queue and then immediately invokes `testHandleQueueMessage` with a generated `SQSEvent`. `testPublishTopicMessage` does the same for SNS. `testPutEventBridgeEvent` checks the local IAM role for `events:PutEvents`, finds every matching local `eventBridge` listener from the compiled Serverless config, adds any explicit `LOCAL_EVENTBRIDGE_EVENT_HANDLERS` mappings, and invokes each listener with the same generated `EventBridgeEvent`.
+That means `testSendQueueMessage` sends to the local SQS queue and then immediately invokes `testHandleQueueMessage` with a generated `SQSEvent`. `testPublishTopicMessage` does the same for SNS. `testPutEventBridgeEvent` checks the local IAM role for `events:PutEvents`, finds every matching local `eventBridge` listener from every compiled Serverless config under `src/services`, adds any explicit `LOCAL_EVENTBRIDGE_EVENT_HANDLERS` mappings, and invokes each listener with the same generated `EventBridgeEvent`. The example intentionally has three matching EventBridge listeners across three stacks: `testHandleEventBridgeEvent` in `user-service`, `testHandleEventBridgeAuditEvent` in `ebh-audit-service`, and `testHandleEventBridgeProjectionEvent` in `ebh-projection-service`; each one invokes the calculate resolver.
 
 Run local smoke tests:
 
@@ -296,6 +327,14 @@ yarn sls:user-service:invoke \
 
 yarn sls:user-service:invoke \
   --function testHandleEventBridgeEvent \
+  --path __test/ebh-event.json
+
+yarn sls:ebh-audit-service:invoke \
+  --function testHandleEventBridgeAuditEvent \
+  --path __test/ebh-event.json
+
+yarn sls:ebh-projection-service:invoke \
+  --function testHandleEventBridgeProjectionEvent \
   --path __test/ebh-event.json
 
 yarn sls:user-service:invoke \
@@ -359,7 +398,8 @@ yarn sls:calculate-service remove \
 | `USERS_TABLE_NAME` | Example | DynamoDB examples and `src/services/user-service/__sls/tables.ts` | DynamoDB table name. |
 | `LOCAL_SQS_EVENT_HANDLERS` | Local optional | `src/libs/sqs.ts` | Comma-separated `queueName=functionName` map for local SQS dispatch. |
 | `LOCAL_SNS_EVENT_HANDLERS` | Local optional | `src/libs/sns.ts` | Comma-separated `topicName=functionName` map for local SNS dispatch. |
-| `LOCAL_EVENTBRIDGE_EVENT_HANDLERS` | Local optional | `src/libs/eventbridge.ts` | Comma-separated `eventBus:source:detailType=functionName` map for extra local EventBridge dispatch targets. Matching `eventBridge` listeners are also discovered from Serverless config. |
+| `LOCAL_EVENTBRIDGE_EVENT_HANDLERS` | Local optional | `src/libs/eventbridge.ts` | Comma-separated `eventBus:source:detailType=functionName` map for extra local EventBridge dispatch targets. Matching `eventBridge` listeners are discovered from Serverless config even when this is empty. |
+| `LOCAL_EVENTBRIDGE_SERVICE_ROOTS` | Local optional | `src/libs/eventbridge.ts` | Comma-separated service root list for local EventBridge discovery. Leave empty to autodiscover every Serverless service under `src/services`. |
 
 ## AWS Helpers
 
