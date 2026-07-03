@@ -1,9 +1,13 @@
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { execa } from 'execa';
+import {
+    IamAction,
+    IamEffect,
+} from '@lib/types/sls.type';
 
 type LocalIamRoleStatement = {
-    Effect?: string;
+    Effect?: IamEffect;
     Action?: unknown;
     Resource?: unknown;
 };
@@ -92,8 +96,8 @@ const matchesPattern = (
 
 const statementMatches = (
     statement: LocalIamRoleStatement,
-    effect: 'Allow' | 'Deny',
-    action: string,
+    effect: IamEffect,
+    action: IamAction,
     resource: string,
 ): boolean =>
     statement.Effect === effect
@@ -145,19 +149,19 @@ const getLocalIamRoleStatements = async (
 };
 
 export const assertLocalHasIamPermission = async (
-    action: string,
+    action: IamAction,
     resource: string,
 ): Promise<void> => {
     const serviceRoot = getServiceRoot();
     const statements = await getLocalIamRoleStatements(serviceRoot);
 
     if (statements.some((statement) =>
-        statementMatches(statement, 'Deny', action, resource))) {
+        statementMatches(statement, IamEffect.DENY, action, resource))) {
         throw new Error(`Local IAM permission denied: ${action} for ${resource}`);
     }
 
     if (!statements.some((statement) =>
-        statementMatches(statement, 'Allow', action, resource))) {
+        statementMatches(statement, IamEffect.ALLOW, action, resource))) {
         throw new Error(`Missing local IAM permission: ${action} for ${resource}`);
     }
 };
@@ -166,7 +170,7 @@ export const assertLocalCanInvokeFunction = async (
     functionName: string,
 ): Promise<void> =>
     assertLocalHasIamPermission(
-        'lambda:InvokeFunction',
+        IamAction.LAMBDA_INVOKE_FUNCTION,
         makeLambdaArn(functionName),
     );
 

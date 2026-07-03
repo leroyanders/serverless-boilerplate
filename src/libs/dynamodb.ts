@@ -34,6 +34,7 @@ import type {
     DynamoItem,
     DynamoKey,
 } from '@lib/types/dynamodb.type';
+import { IamAction } from '@lib/types/sls.type';
 
 export type {
     DynamoExpressionOptions,
@@ -53,7 +54,7 @@ const withExpressions = <TInput extends object>(input: TInput): TInput =>
     dynoexpr<TInput>(input as TInput & IDynoexprArgs);
 
 type DynamoCommandAccess = {
-    action: string;
+    action: IamAction;
     resource: string;
 };
 
@@ -73,7 +74,7 @@ const getDynamoResource = (
 };
 
 const getDynamoCommandAccess = (
-    action: string,
+    action: IamAction,
     tableName: string,
     indexName?: unknown,
 ): DynamoCommandAccess => ({
@@ -160,7 +161,7 @@ export const getDB = (tableName: string) => ({
                 TableName: tableName,
                 Key: key,
             })),
-            getDynamoCommandAccess('dynamodb:GetItem', tableName),
+            getDynamoCommandAccess(IamAction.DYNAMODB_GET_ITEM, tableName),
         );
 
         return response.Item as TItem | undefined;
@@ -176,7 +177,7 @@ export const getDB = (tableName: string) => ({
                 TableName: tableName,
                 Item: item as DynamoItem,
             })),
-            getDynamoCommandAccess('dynamodb:PutItem', tableName),
+            getDynamoCommandAccess(IamAction.DYNAMODB_PUT_ITEM, tableName),
         ),
 
     update: async <TItem = DynamoItem>(
@@ -189,7 +190,7 @@ export const getDB = (tableName: string) => ({
                 TableName: tableName,
                 Key: key,
             })),
-            getDynamoCommandAccess('dynamodb:UpdateItem', tableName),
+            getDynamoCommandAccess(IamAction.DYNAMODB_UPDATE_ITEM, tableName),
         );
 
         return response.Attributes as TItem | undefined;
@@ -205,7 +206,7 @@ export const getDB = (tableName: string) => ({
                 TableName: tableName,
                 Key: key,
             })),
-            getDynamoCommandAccess('dynamodb:DeleteItem', tableName),
+            getDynamoCommandAccess(IamAction.DYNAMODB_DELETE_ITEM, tableName),
         );
 
         return response.Attributes as TItem | undefined;
@@ -219,7 +220,7 @@ export const getDB = (tableName: string) => ({
                 ...options,
                 TableName: tableName,
             })),
-            getDynamoCommandAccess('dynamodb:Query', tableName, options.IndexName),
+            getDynamoCommandAccess(IamAction.DYNAMODB_QUERY, tableName, options.IndexName),
         );
 
         return (response.Items ?? []) as TItem[];
@@ -233,7 +234,7 @@ export const getDB = (tableName: string) => ({
                 ...options,
                 TableName: tableName,
             })),
-            getDynamoCommandAccess('dynamodb:Scan', tableName, options.IndexName),
+            getDynamoCommandAccess(IamAction.DYNAMODB_SCAN, tableName, options.IndexName),
         );
 
         return (response.Items ?? []) as TItem[];

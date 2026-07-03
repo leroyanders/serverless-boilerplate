@@ -23,6 +23,11 @@ export type {
     IamRoleStatement,
     IamRoleStatementGroup,
 } from '@lib/types/sls.type';
+export {
+    DynamoKeyType,
+    IamAction,
+    IamEffect,
+} from '@lib/types/sls.type';
 
 export const frameworkVersion = '3';
 

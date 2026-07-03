@@ -11,50 +11,50 @@ import {
 export default SLS.createIamRoleStatements({
     userStore: {
         read: {
-            Effect: 'Allow',
-            Action: ['dynamodb:GetItem', 'dynamodb:Query'],
+            Effect: SLS.IamEffect.ALLOW,
+            Action: [SLS.IamAction.DYNAMODB_GET_ITEM, SLS.IamAction.DYNAMODB_QUERY],
             Resource: [
                 SLS.makeDBArn(USERS_TABLE),
                 SLS.makeDBArn(USERS_TABLE, 'index/*'),
             ],
         },
         write: {
-            Effect: 'Allow',
-            Action: ['dynamodb:PutItem'],
+            Effect: SLS.IamEffect.ALLOW,
+            Action: [SLS.IamAction.DYNAMODB_PUT_ITEM],
             Resource: SLS.makeDBArn(USERS_TABLE),
         },
         delete: {
-            Effect: 'Allow',
-            Action: ['dynamodb:DeleteItem'],
+            Effect: SLS.IamEffect.ALLOW,
+            Action: [SLS.IamAction.DYNAMODB_DELETE_ITEM],
             Resource: SLS.makeDBArn(USERS_TABLE),
         },
     },
     userEventsQueue: {
         send: {
-            Effect: 'Allow',
-            Action: ['sqs:SendMessage', 'sqs:SendMessageBatch'],
+            Effect: SLS.IamEffect.ALLOW,
+            Action: [SLS.IamAction.SQS_SEND_MESSAGE, SLS.IamAction.SQS_SEND_MESSAGE_BATCH],
             Resource: SLS.makeSQSArn(USER_EVENTS_QUEUE),
         },
         consume: {
-            Effect: 'Allow',
+            Effect: SLS.IamEffect.ALLOW,
             Action: [
-                'sqs:DeleteMessage',
-                'sqs:GetQueueAttributes',
-                'sqs:ReceiveMessage',
+                SLS.IamAction.SQS_DELETE_MESSAGE,
+                SLS.IamAction.SQS_GET_QUEUE_ATTRIBUTES,
+                SLS.IamAction.SQS_RECEIVE_MESSAGE,
             ],
             Resource: SLS.makeSQSArn(USER_EVENTS_QUEUE),
         },
     },
     userEventsTopic: {
         publish: {
-            Effect: 'Allow',
-            Action: ['sns:Publish', 'sns:PublishBatch'],
+            Effect: SLS.IamEffect.ALLOW,
+            Action: [SLS.IamAction.SNS_PUBLISH, SLS.IamAction.SNS_PUBLISH_BATCH],
             Resource: SLS.makeSNSArn(USER_EVENTS_TOPIC),
         },
     },
     invokeCalculateService: {
-        Effect: 'Allow',
-        Action: ['lambda:InvokeFunction'],
+        Effect: SLS.IamEffect.ALLOW,
+        Action: [SLS.IamAction.LAMBDA_INVOKE_FUNCTION],
         Resource: SLS.makeLambdaArn(SERVERLESS_CALCULATE_SERVICE_NAME),
     },
 } satisfies SLS.IamRoleStatementGroup);

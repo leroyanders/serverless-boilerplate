@@ -11,8 +11,8 @@ const tables = {
             name: USERS_TABLE,
             resourceName: USERS_TABLE_RESOURCE,
             key: [
-                { AttributeName: 'pk', KeyType: 'HASH' },
-                { AttributeName: 'sk', KeyType: 'RANGE' },
+                { AttributeName: 'pk', KeyType: SLS.DynamoKeyType.HASH },
+                { AttributeName: 'sk', KeyType: SLS.DynamoKeyType.RANGE },
             ],
         }),
     },

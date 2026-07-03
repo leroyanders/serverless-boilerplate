@@ -27,6 +27,7 @@ import type {
     TopicEventMessage,
     TopicMessage,
 } from '@lib/types/sns.type';
+import { IamAction } from '@lib/types/sls.type';
 
 export const snsClient = new SNSClient(getAwsClientConfig(process.env.SNS_ENDPOINT));
 
@@ -103,7 +104,7 @@ const getLocalTopicHandler = (
     localHandler ?? getLocalHandlerMap()[getTopicName(topicArnOrName)];
 
 const assertLocalCanPublishTopicMessage = async (
-    action: 'sns:Publish' | 'sns:PublishBatch',
+    action: IamAction.SNS_PUBLISH | IamAction.SNS_PUBLISH_BATCH,
     topicArnOrName: string,
 ): Promise<void> => {
     if (!isDev) {
@@ -243,7 +244,7 @@ export const publishTopicMessage = async <TMessage extends TopicMessage>(
         return undefined;
     }
 
-    await assertLocalCanPublishTopicMessage('sns:Publish', topicArnOrName);
+    await assertLocalCanPublishTopicMessage(IamAction.SNS_PUBLISH, topicArnOrName);
 
     const response = await snsClient.send(command);
     await dispatchLocalTopicMessage(topicArnOrName, topicMessage, response, options);
@@ -273,7 +274,7 @@ export const publishSNS = async <TPayload extends TopicMessage>(
         return undefined;
     }
 
-    await assertLocalCanPublishTopicMessage('sns:Publish', name);
+    await assertLocalCanPublishTopicMessage(IamAction.SNS_PUBLISH, name);
 
     const response = await snsClient.send(command);
     log.debug('r', response);
@@ -324,7 +325,7 @@ export const publishTopicEvents = async <EventType>(
             continue;
         }
 
-        await assertLocalCanPublishTopicMessage('sns:PublishBatch', topicArnOrName);
+        await assertLocalCanPublishTopicMessage(IamAction.SNS_PUBLISH_BATCH, topicArnOrName);
 
         const response = await snsClient.send(new PublishBatchCommand({
             PublishBatchRequestEntries: entries,

@@ -28,6 +28,7 @@ import type {
     QueueEventMessage,
     QueueMessage,
 } from '@lib/types/sqs.type';
+import { IamAction } from '@lib/types/sls.type';
 
 export const sqsClient = new SQSClient(getAwsClientConfig(process.env.SQS_ENDPOINT));
 
@@ -139,7 +140,7 @@ const getLocalQueueHandler = (
     localHandler ?? getLocalHandlerMap()[getQueueName(queueUrlOrName)];
 
 const assertLocalCanSendQueueMessage = async (
-    action: 'sqs:SendMessage' | 'sqs:SendMessageBatch',
+    action: IamAction.SQS_SEND_MESSAGE | IamAction.SQS_SEND_MESSAGE_BATCH,
     queueUrlOrName: string,
 ): Promise<void> => {
     if (!isDev) {
@@ -276,7 +277,7 @@ export const sendQueueMessage = async <TMessage extends QueueMessage>(
         return undefined;
     }
 
-    await assertLocalCanSendQueueMessage('sqs:SendMessage', queueUrlOrName);
+    await assertLocalCanSendQueueMessage(IamAction.SQS_SEND_MESSAGE, queueUrlOrName);
 
     const response = await sqsClient.send(command);
     await dispatchLocalQueueMessage(queueUrlOrName, body, response, options);
@@ -321,7 +322,7 @@ export const sendMessage = async <TMessage extends QueueMessage = string>(
         return undefined;
     }
 
-    await assertLocalCanSendQueueMessage('sqs:SendMessage', name);
+    await assertLocalCanSendQueueMessage(IamAction.SQS_SEND_MESSAGE, name);
 
     const response = await sqsClient.send(command);
     log.debug('r', response);
@@ -372,7 +373,7 @@ export const publishQueueEvents = async <EventType>(
             continue;
         }
 
-        await assertLocalCanSendQueueMessage('sqs:SendMessageBatch', queueUrlOrName);
+        await assertLocalCanSendQueueMessage(IamAction.SQS_SEND_MESSAGE_BATCH, queueUrlOrName);
 
         const response = await sqsClient.send(new SendMessageBatchCommand({
             Entries: entries,
@@ -424,7 +425,7 @@ export const sendBatchMessage = async <TMessage extends QueueMessage>(
         return responses;
     }
 
-    await assertLocalCanSendQueueMessage('sqs:SendMessageBatch', name);
+    await assertLocalCanSendQueueMessage(IamAction.SQS_SEND_MESSAGE_BATCH, name);
 
     do {
         const batch = entries.splice(0, BATCH_SIZE);

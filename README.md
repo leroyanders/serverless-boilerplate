@@ -187,8 +187,8 @@ const tables = {
         ...SLS.createDDB({
             name: USERS_TABLE,
             key: [
-                { AttributeName: 'pk', KeyType: 'HASH' },
-                { AttributeName: 'sk', KeyType: 'RANGE' },
+                { AttributeName: 'pk', KeyType: SLS.DynamoKeyType.HASH },
+                { AttributeName: 'sk', KeyType: SLS.DynamoKeyType.RANGE },
             ],
         }),
     },
@@ -204,8 +204,8 @@ import { USERS_TABLE } from './consts';
 export default SLS.createIamRoleStatements({
     userStore: {
         read: {
-            Effect: 'Allow',
-            Action: ['dynamodb:GetItem', 'dynamodb:Query'],
+            Effect: SLS.IamEffect.ALLOW,
+            Action: [SLS.IamAction.DYNAMODB_GET_ITEM, SLS.IamAction.DYNAMODB_QUERY],
             Resource: [
                 SLS.makeDBArn(USERS_TABLE),
                 SLS.makeDBArn(USERS_TABLE, 'index/*'),
