@@ -28,16 +28,61 @@ This boilerplate is designed for fast-moving serverless projects that still need
 
 ```mermaid
 flowchart LR
-    client[Client] --> gateway[API Gateway]
-    gateway --> auth[Request Authorizer]
-    auth --> api[apiUserLogin Lambda]
-    api --> invoker[invokeCalculate helper]
-    invoker --> calculator[calculate-service Lambda]
-    calculator --> api
-    api --> client
+    client["client"] --> gateway["api gateway"]
+    gateway --> authorizer["user-service: request authorizer"]
+
+    subgraph userStack["user-service stack"]
+        loginApi["GET /: apiUserLogin"]
+        ebhPublisher["POST /queue/ebh: testPutEventBridgeEvent"]
+        userEbh["ebh: testHandleEventBridgeEvent"]
+        usersTable["dynamodb: users"]
+        eventBus["eventbridge bus: user-events"]
+    end
+
+    subgraph auditStack["ebh-audit-service stack"]
+        auditEbh["ebh: testHandleEventBridgeAuditEvent"]
+    end
+
+    subgraph projectionStack["ebh-projection-service stack"]
+        projectionEbh["ebh: testHandleEventBridgeProjectionEvent"]
+    end
+
+    subgraph calcStack["calculate-service stack"]
+        calculateResolver["calculateServiceResolver"]
+    end
+
+    authorizer --> loginApi
+    authorizer --> ebhPublisher
+
+    loginApi --> usersTable
+    loginApi --> calculateResolver
+    loginApi --> client
+
+    ebhPublisher --> putEvent["putEventBridgeEvent"]
+    putEvent --> iamCheck["local iam check: events:PutEvents"]
+    putEvent --> eventBus
+
+    eventBus --> userEbh
+    eventBus --> auditEbh
+    eventBus --> projectionEbh
+
+    userEbh --> calculateResolver
+    auditEbh --> calculateResolver
+    projectionEbh --> calculateResolver
+
+    subgraph localDispatch["local NODE_ENV=dev dispatch"]
+        slsPrint["serverless print for src/services/*"]
+        matcher["match eventBus + source + detail-type"]
+    end
+
+    putEvent -. "local only" .-> slsPrint
+    slsPrint -.-> matcher
+    matcher -.-> userEbh
+    matcher -.-> auditEbh
+    matcher -.-> projectionEbh
 ```
 
-The API handler stays thin: it receives normalized request data, reads authenticated context, and delegates calculation work to the separate `calculate-service` Lambda.
+The API handler stays thin: it receives normalized request data, reads authenticated context, and delegates calculation work to the separate `calculate-service` Lambda. EventBridge publishing goes through the `user-events` bus; in local mode the helper scans every Serverless stack under `src/services`, finds matching EBH listeners, and invokes them from their own service roots.
 
 ## Project Structure
 
