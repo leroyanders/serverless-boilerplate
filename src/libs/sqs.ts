@@ -19,6 +19,7 @@ import {
     assertLocalHasIamPermission,
     invokeLocalFunction,
 } from '@lib/serverless-local';
+import log from '@lib/logger';
 import type {
     SendQueueMessageOptions,
 } from '@lib/interfaces/sqs.interface';
@@ -224,7 +225,7 @@ const dispatchLocalQueueMessage = async (
 
     const output = await invokeLocalFunction(handler, createQueueEvent(queueUrlOrName, body, response));
 
-    console.info('locally dispatched sqs message', {
+    log.info('locally dispatched sqs message', {
         handler,
         output,
         queue: getQueueName(queueUrlOrName),
@@ -248,7 +249,7 @@ const dispatchLocalQueueBatch = async (
 
     const output = await invokeLocalFunction(handler, createQueueBatchEvent(queueUrlOrName, entries, response));
 
-    console.info('locally dispatched sqs events', {
+    log.info('locally dispatched sqs events', {
         handler,
         output,
         queue: getQueueName(queueUrlOrName),
@@ -312,9 +313,9 @@ export const sendMessage = async <TMessage extends QueueMessage = string>(
             || {}),
     });
 
-    console.debug('queueing message to', name);
-    console.debug('url', queueUrl);
-    console.debug('p', command.input);
+    log.debug('queueing message to', name);
+    log.debug('url', queueUrl);
+    log.debug('p', command.input);
 
     if (isDryRun()) {
         return undefined;
@@ -323,7 +324,7 @@ export const sendMessage = async <TMessage extends QueueMessage = string>(
     await assertLocalCanSendQueueMessage('sqs:SendMessage', name);
 
     const response = await sqsClient.send(command);
-    console.debug('r', response);
+    log.debug('r', response);
     await dispatchLocalQueueMessage(name, body, response, {});
 
     return response;
@@ -360,7 +361,7 @@ export const publishQueueEvents = async <EventType>(
             };
         });
 
-        console.debug('publish sqs events', {
+        log.debug('publish sqs events', {
             entries,
             name,
             queue: getQueueName(queueUrlOrName),
@@ -392,8 +393,8 @@ export const sendBatchMessage = async <TMessage extends QueueMessage>(
     fifo: boolean = false,
     constructUrl: boolean = true,
 ): Promise<SendMessageBatchCommandOutput[]> => {
-    console.debug('queueing batch to', { name, MessageGroupId });
-    console.debug('sendBatchMessage::data', data);
+    log.debug('queueing batch to', { name, MessageGroupId });
+    log.debug('sendBatchMessage::data', data);
 
     const entries = data.map((message, index): SendMessageBatchRequestEntry => ({
         Id: `b${index.toString()}`,
@@ -417,7 +418,7 @@ export const sendBatchMessage = async <TMessage extends QueueMessage>(
     const queueUrl = getSendQueueUrl(name, fifo, constructUrl);
     const responses: SendMessageBatchCommandOutput[] = [];
 
-    console.debug('url', queueUrl);
+    log.debug('url', queueUrl);
 
     if (isDryRun()) {
         return responses;
@@ -432,7 +433,7 @@ export const sendBatchMessage = async <TMessage extends QueueMessage>(
             QueueUrl: queueUrl,
         }));
 
-        console.debug('r', response);
+        log.debug('r', response);
         await dispatchLocalQueueBatch(name, batch, response, {});
         responses.push(response);
     } while (entries.length);

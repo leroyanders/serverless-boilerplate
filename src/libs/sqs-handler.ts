@@ -2,6 +2,7 @@ import type {
     SQSBatchResponse,
     SQSEvent,
 } from 'aws-lambda';
+import log from '@lib/logger';
 import type { QueueHandler } from '@lib/types/sqs-handler.type';
 
 export type { QueueRecord } from '@lib/interfaces/sqs-handler.interface';
@@ -28,7 +29,7 @@ export const sqsHandler =
                         rawRecord: record,
                     });
                 } catch (error) {
-                    console.error('failed to process sqs message', {
+                    log.error('failed to process sqs message', {
                         error,
                         messageId: record.messageId,
                     });

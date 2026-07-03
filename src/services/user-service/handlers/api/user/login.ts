@@ -15,6 +15,7 @@ import type { LoginRequest } from '../../../types';
 import status from 'http-status-codes';
 
 export const handler = lambdaHandler<LoginRequest, LoginResponse>(async ({ data, ctx }) => {
+    const pk = KSUID.randomSync().string;
     const sum = await invokeCalculate({
         a: 10,
         b: 25,
@@ -24,8 +25,6 @@ export const handler = lambdaHandler<LoginRequest, LoginResponse>(async ({ data,
     const userId = ctx.userId
         ?? (typeof data.userId === 'string' ? data.userId : undefined)
         ?? DEFAULT_LOCAL_USER_ID;
-    const pk = KSUID.randomSync().string;
-
     const item: LoginUserItem = {
         pk,
         sk: USER_LOGIN_SK,
@@ -36,7 +35,6 @@ export const handler = lambdaHandler<LoginRequest, LoginResponse>(async ({ data,
     };
 
     const db = getDB(tableName);
-
     await db.put(item);
     const user = await db.get<LoginUserItem>({
         pk,

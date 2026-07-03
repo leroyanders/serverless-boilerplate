@@ -1,9 +1,10 @@
+import log from '@lib/logger';
 import { snsHandler } from '@lib/sns-handler';
 import type { HandledTopicRecord } from '../../../interfaces/handled-topic-record.interface';
 import type { UserTopicEvent } from '../../../interfaces/user-topic-event.interface';
 
 export const handler = snsHandler<UserTopicEvent, HandledTopicRecord>(({ data, messageId, subject, topicArn }) => {
-    console.info('received sns message', {
+    log.info('received sns message', {
         message: data,
         messageId,
         subject,

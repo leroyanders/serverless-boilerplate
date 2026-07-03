@@ -17,6 +17,7 @@ import {
     assertLocalHasIamPermission,
     invokeLocalFunction,
 } from '@lib/serverless-local';
+import log from '@lib/logger';
 import type {
     PublishTopicMessageOptions,
 } from '@lib/interfaces/sns.interface';
@@ -191,7 +192,7 @@ const dispatchLocalTopicMessage = async (
 
     const output = await invokeLocalFunction(handler, createTopicEvent(topicArnOrName, message, response, options));
 
-    console.info('locally dispatched sns message', {
+    log.info('locally dispatched sns message', {
         handler,
         output,
         topic: getTopicName(topicArnOrName),
@@ -215,7 +216,7 @@ const dispatchLocalTopicBatch = async (
 
     const output = await invokeLocalFunction(handler, createTopicBatchEvent(topicArnOrName, entries, response, options));
 
-    console.info('locally dispatched sns events', {
+    log.info('locally dispatched sns events', {
         handler,
         output,
         records: entries.length,
@@ -264,9 +265,9 @@ export const publishSNS = async <TPayload extends TopicMessage>(
         TopicArn: topicArn,
     });
 
-    console.debug('publishing sns to', name);
-    console.debug('arn', topicArn);
-    console.debug('p', command.input);
+    log.debug('publishing sns to', name);
+    log.debug('arn', topicArn);
+    log.debug('p', command.input);
 
     if (isDryRun()) {
         return undefined;
@@ -275,7 +276,7 @@ export const publishSNS = async <TPayload extends TopicMessage>(
     await assertLocalCanPublishTopicMessage('sns:Publish', name);
 
     const response = await snsClient.send(command);
-    console.debug('r', response);
+    log.debug('r', response);
     await dispatchLocalTopicMessage(name, topicMessage, response, { subject: Subject });
 
     return response;
@@ -312,7 +313,7 @@ export const publishTopicEvents = async <EventType>(
             };
         });
 
-        console.debug('publish sns events', {
+        log.debug('publish sns events', {
             entries,
             name,
             source,
