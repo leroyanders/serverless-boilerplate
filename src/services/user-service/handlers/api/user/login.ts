@@ -6,6 +6,7 @@ import {
 import { lambdaHandler } from '@lib/lambda-handler.lib';
 import { invokeCalculate } from '../../../../calculate-service/handlers/invokers/calculate.invoker';
 import { getDB } from '@lib/dynamodb.lib';
+import KSUID = require('ksuid');
 
 import type { LoginResponse } from '../../../interfaces/login-response.interface';
 import type { LoginUserItem } from '../../../interfaces/login-user-item.interface';
@@ -23,9 +24,10 @@ export const handler = lambdaHandler<LoginRequest, LoginResponse>(async ({ data,
     const userId = ctx.userId
         ?? (typeof data.userId === 'string' ? data.userId : undefined)
         ?? DEFAULT_LOCAL_USER_ID;
+    const pk = KSUID.randomSync().string;
 
     const item: LoginUserItem = {
-        pk: userId,
+        pk,
         sk: USER_LOGIN_SK,
         userId,
         lastLoginAt: new Date().toISOString(),
@@ -37,7 +39,7 @@ export const handler = lambdaHandler<LoginRequest, LoginResponse>(async ({ data,
 
     await db.put(item);
     const user = await db.get<LoginUserItem>({
-        pk: userId,
+        pk,
         sk: USER_LOGIN_SK,
     });
 
