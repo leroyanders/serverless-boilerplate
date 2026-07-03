@@ -1,4 +1,4 @@
-import { snsHandler } from '@lib/sns-handler.lib';
+import { snsHandler } from '@lib/sns-handler';
 import type { HandledTopicRecord } from '../../../interfaces/handled-topic-record.interface';
 import type { UserTopicEvent } from '../../../interfaces/user-topic-event.interface';
 

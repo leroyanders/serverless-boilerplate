@@ -1,6 +1,6 @@
 import status from 'http-status-codes';
-import { lambdaHandler } from '@lib/lambda-handler.lib';
-import { publishSNS } from '@lib/sns.lib';
+import { lambdaHandler } from '@lib/lambda-handler';
+import { publishSNS } from '@lib/sns';
 import type { PublishSnsTestResponse } from '../../../interfaces/publish-sns-test-response.interface';
 import type { PublishSnsTestRequest } from '../../../types';
 

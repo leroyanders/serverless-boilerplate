@@ -27,8 +27,8 @@ import {
     getAwsClientConfig,
     getAwsRegion,
     isDev,
-} from '@lib/aws-client-config.lib';
-import { assertLocalHasIamPermission } from '@lib/serverless-local.lib';
+} from '@lib/aws-client-config';
+import { assertLocalHasIamPermission } from '@lib/serverless-local';
 import type {
     DynamoExpressionOptions,
     DynamoItem,

@@ -14,11 +14,11 @@ import {
     getLocalAwsEndpoint,
     getAwsRegion,
     isDev,
-} from '@lib/aws-client-config.lib';
+} from '@lib/aws-client-config';
 import {
     assertLocalHasIamPermission,
     invokeLocalFunction,
-} from '@lib/serverless-local.lib';
+} from '@lib/serverless-local';
 import type {
     SendQueueMessageOptions,
 } from '@lib/interfaces/sqs.interface';

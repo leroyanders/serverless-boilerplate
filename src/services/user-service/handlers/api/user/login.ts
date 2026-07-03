@@ -3,9 +3,9 @@ import {
     USER_LOGIN_SK,
     USERS_TABLE_DEFAULT,
 } from '@constants/service.const';
-import { lambdaHandler } from '@lib/lambda-handler.lib';
+import { lambdaHandler } from '@lib/lambda-handler';
 import { invokeCalculate } from '../../../../calculate-service/handlers/invokers/calculate.invoker';
-import { getDB } from '@lib/dynamodb.lib';
+import { getDB } from '@lib/dynamodb';
 import KSUID = require('ksuid');
 
 import type { LoginResponse } from '../../../interfaces/login-response.interface';

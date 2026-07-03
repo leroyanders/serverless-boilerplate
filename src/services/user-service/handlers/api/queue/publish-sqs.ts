@@ -1,6 +1,6 @@
 import status from 'http-status-codes';
-import { lambdaHandler } from '@lib/lambda-handler.lib';
-import { sendMessage } from '@lib/sqs.lib';
+import { lambdaHandler } from '@lib/lambda-handler';
+import { sendMessage } from '@lib/sqs';
 import type { SendSqsTestResponse } from '../../../interfaces/send-sqs-test-response.interface';
 import type { SendSqsTestRequest } from '../../../types';
 

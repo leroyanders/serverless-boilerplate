@@ -1,5 +1,5 @@
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
-import { invokeLocalFunction } from '@lib/serverless-local.lib';
+import { invokeLocalFunction } from '@lib/serverless-local';
 
 const lambdaClient = new LambdaClient({
     region: process.env.AWS_REGION,

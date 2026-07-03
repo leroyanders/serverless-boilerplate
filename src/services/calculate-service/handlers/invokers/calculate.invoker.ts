@@ -1,4 +1,4 @@
-import { invokeFunction } from '@lib/invoke-function.lib';
+import { invokeFunction } from '@lib/invoke-function';
 import {
     CALCULATE_SERVICE_FN,
     SERVERLESS_CALCULATE_SERVICE_NAME,
