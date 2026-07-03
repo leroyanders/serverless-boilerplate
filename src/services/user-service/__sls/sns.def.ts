@@ -1,8 +1,8 @@
 import {
     USER_EVENTS_TOPIC_DEFAULT,
-} from '@constants/service.const';
+    USER_EVENTS_TOPIC_RESOURCE,
+} from './const';
 import * as SLS from '../../../sls.defaults';
-import { USER_EVENTS_TOPIC_RESOURCE } from './const';
 
 export const USER_EVENTS_TOPIC = process.env.USER_EVENTS_TOPIC_NAME ?? USER_EVENTS_TOPIC_DEFAULT;
 

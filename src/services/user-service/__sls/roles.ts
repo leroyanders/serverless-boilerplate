@@ -1,6 +1,6 @@
 import {
     SERVERLESS_CALCULATE_SERVICE_NAME,
-} from '@constants/service.const';
+} from '../../calculate-service/__sls/const';
 import * as SLS from '../../../sls.defaults';
 import { userEventsTopic } from './sns.def';
 import { userEventsQueue } from './sqs.def';

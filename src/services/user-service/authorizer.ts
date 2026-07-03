@@ -8,7 +8,7 @@ import {
     QUEUE_SNS_HTTP_PATH,
     QUEUE_SQS_HTTP_PATH,
     ROOT_HTTP_PATH,
-} from '@constants/service.const';
+} from './__sls/const';
 import { AuthPolicy } from '@lib/auth-policy';
 import { authorizer } from '@lib/authorizer';
 import log, { logBeforeTimeout } from '@lib/logger';

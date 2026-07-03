@@ -1,8 +1,8 @@
 import {
     USER_EVENTS_QUEUE_DEFAULT,
-} from '@constants/service.const';
+    USER_EVENTS_QUEUE_RESOURCE,
+} from './const';
 import * as SLS from '../../../sls.defaults';
-import { USER_EVENTS_QUEUE_RESOURCE } from './const';
 
 export const USER_EVENTS_QUEUE = process.env.USER_EVENTS_QUEUE_NAME ?? USER_EVENTS_QUEUE_DEFAULT;
 

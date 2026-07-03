@@ -25,7 +25,7 @@ import {
     QUEUE_SEND_QUEUE_MESSAGE_FN,
     QUEUE_SEND_QUEUE_MESSAGE_HANDLER,
     QUEUE_SQS_HTTP_PATH,
-} from '@constants/service.const';
+} from './__sls/const';
 import * as SLS from '../../sls.defaults';
 import db from './__sls/db';
 import statements from './__sls/roles';

@@ -4,7 +4,7 @@ import {
     CALCULATE_SERVICE_RESOLVER_FN,
     CALCULATE_SERVICE_RESOLVER_HANDLER,
     SERVERLESS_CALCULATE_SERVICE_NAME,
-} from '@constants/service.const';
+} from './__sls/const';
 import * as SLS from '../../sls.defaults';
 
 module.exports = {

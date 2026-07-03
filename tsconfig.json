@@ -5,8 +5,7 @@
     "types": ["node"],
     "paths": {
       "@lib/*": ["./src/libs/*"],
-      "@interfaces/*": ["./src/interfaces/*"],
-      "@constants/*": ["./src/constants/*"]
+      "@interfaces/*": ["./src/interfaces/*"]
     }
   }
 }

@@ -2,7 +2,7 @@ import {
     DEFAULT_LOCAL_USER_ID,
     USER_LOGIN_SK,
     USERS_TABLE_DEFAULT,
-} from '@constants/service.const';
+} from '../../../__sls/const';
 import { lambdaHandler } from '@lib/lambda-handler';
 import { invokeCalculate } from '../../../../calculate-service/handlers/invokers/calculate.invoker';
 import { getDB } from '@lib/dynamodb';

@@ -22,7 +22,7 @@ This boilerplate is designed for fast-moving serverless projects that still need
 - **Typed AWS helpers** for SQS, SNS, and DynamoDB operations.
 - **Typed SQS/SNS handlers** with local producer-to-consumer dispatch.
 - **Dotenv-powered configuration** through `.env` and `serverless-dotenv-plugin`.
-- **Path aliases** for cleaner imports such as `@lib/*` and `@constants/*`.
+- **Path aliases** for cleaner imports such as `@lib/*`.
 
 ## Architecture
 
@@ -44,61 +44,63 @@ The API handler stays thin: it receives normalized request data, reads authentic
 ```text
 .
 ├── src
-│   ├── authorizer.ts
-│   ├── constants
-│   │   └── service.const.ts
 │   ├── libs
-│   │   ├── aws-client-config.lib.ts
-│   │   ├── dynamodb.lib.ts
-│   │   ├── invoke-function.lib.ts
-│   │   ├── lambda-handler.lib.ts
-│   │   ├── serverless-local.lib.ts
-│   │   ├── sns-handler.lib.ts
-│   │   ├── sns.lib.ts
-│   │   ├── sqs-handler.lib.ts
-│   │   └── sqs.lib.ts
-│   └── services
-│       ├── sls.defaults.ts
-│       ├── calculate-service
-│       │   ├── __test
-│       │   │   └── event.json
-│       │   ├── handlers
-│       │   │   ├── invokers
-│       │   │   │   └── calculate.invoker.ts
-│       │   │   └── resolvers
-│       │   │       └── calculate.resolver.ts
-│       │   ├── interfaces
-│       │   ├── serverless.ts
-│       │   └── types
-│       └── user-service
-│           ├── __test
-│           │   ├── event.json
-│           │   ├── publish-sns-event.json
-│           │   ├── send-sqs-event.json
-│           │   ├── sns-event.json
-│           │   └── sqs-event.json
-│           ├── __sls
-│           │   ├── consts.ts
-│           │   ├── queues.ts
-│           │   ├── resources.ts
-│           │   ├── roles.ts
-│           │   ├── tables.ts
-│           │   └── topics.ts
-│           ├── handlers
-│           │   ├── api
-│           │   │   ├── test
-│           │   │   │   ├── publish-sns.ts
-│           │   │   │   └── publish-sqs.ts
-│           │   │   └── user
-│           │   │       └── login.ts
-│           │   ├── events
-│           │   │   ├── sns
-│           │   │   │   └── user-events.ts
-│           │   │   └── sqs
-│           │   │       └── user-events.ts
-│           ├── interfaces
-│           ├── serverless.ts
-│           └── types
+│   │   ├── auth-policy.ts
+│   │   ├── authorizer.ts
+│   │   ├── aws-client-config.ts
+│   │   ├── dynamodb.ts
+│   │   ├── invoke-function.ts
+│   │   ├── lambda-handler.ts
+│   │   ├── logger.ts
+│   │   ├── serverless-local.ts
+│   │   ├── sns-handler.ts
+│   │   ├── sns.ts
+│   │   ├── sqs-handler.ts
+│   │   └── sqs.ts
+│   ├── services
+│   │   ├── calculate-service
+│   │   │   ├── __sls
+│   │   │   │   └── const.ts
+│   │   │   ├── __test
+│   │   │   │   └── event.json
+│   │   │   ├── handlers
+│   │   │   │   ├── invokers
+│   │   │   │   │   └── calculate.invoker.ts
+│   │   │   │   └── resolvers
+│   │   │   │       └── calculate.resolver.ts
+│   │   │   ├── interfaces
+│   │   │   ├── serverless.ts
+│   │   │   └── types
+│   │   └── user-service
+│   │       ├── __sls
+│   │       │   ├── const.ts
+│   │       │   ├── db.ts
+│   │       │   ├── roles.ts
+│   │       │   ├── sns.def.ts
+│   │       │   ├── sqs.def.ts
+│   │       │   └── tables.ts
+│   │       ├── __test
+│   │       │   ├── event.json
+│   │       │   ├── publish-sns-event.json
+│   │       │   ├── send-sqs-event.json
+│   │       │   ├── sns-event.json
+│   │       │   └── sqs-event.json
+│   │       ├── handlers
+│   │       │   ├── api
+│   │       │   │   ├── queue
+│   │       │   │   │   ├── publish-sns.ts
+│   │       │   │   │   └── publish-sqs.ts
+│   │       │   │   └── user
+│   │       │   │       └── login.ts
+│   │       │   └── events
+│   │       │       ├── sns
+│   │       │       │   └── user-events.ts
+│   │       │       └── sqs
+│   │       │           └── user-events.ts
+│   │       ├── interfaces
+│   │       ├── serverless.ts
+│   │       └── types
+│   └── sls.defaults.ts
 ├── .env.example
 ├── docker-compose.yml
 ├── package.json
@@ -169,7 +171,7 @@ yarn sls:user-service invoke local \
 
 Environment variables live in `.env`. The committed `.env.example` documents every required key.
 
-Serverless services use `serverless-dotenv-plugin` with `path: ../../../.env`, because service configs live under `src/services/<service>`. `src/services/sls.defaults.ts` also loads the same `.env` before building resources and IAM statements. Shared AWS helpers load the root `.env` before creating SDK clients.
+Serverless services use `serverless-dotenv-plugin` with `path: ../../../.env`, because service configs live under `src/services/<service>`. `src/sls.defaults.ts` also loads the same `.env` before building resources and IAM statements. Shared AWS helpers load the root `.env` before creating SDK clients.
 
 ## Infrastructure Resources
 
@@ -316,18 +318,18 @@ yarn sls:calculate-service remove \
 
 | Variable | Required | Used By | Description |
 | --- | --- | --- | --- |
-| `JWT_SECRET` | Yes | `src/authorizer.ts` | Secret used to verify bearer JWTs. |
+| `JWT_SECRET` | Yes | `src/libs/authorizer.ts` | Secret used to verify bearer JWTs. |
 | `NODE_ENV` | Local only | `src/libs/*` | Set to `dev` to use local Lambda resolver invocation and LocalStack-backed AWS clients. |
 | `STAGE` | Optional | `src/services/user-service/serverless.ts` | Serverless stage. Defaults to `dev`. |
 | `AWS_REGION` | AWS/runtime | AWS SDK clients | Region used by AWS clients. |
 | `AWS_DEFAULT_REGION` | Local optional | Docker and AWS-compatible tools | Default region used by local AWS tooling. |
-| `AWS_ACCOUNT_ID` | Local optional | `src/libs/aws-client-config.lib.ts` | Account id used to build local SQS URLs and SNS ARNs. Defaults to `000000000000`. |
+| `AWS_ACCOUNT_ID` | Local optional | `src/libs/aws-client-config.ts` | Account id used to build local SQS URLs and SNS ARNs. Defaults to `000000000000`. |
 | `AWS_ACCESS_KEY_ID` | Local optional | AWS SDK clients | LocalStack access key. Defaults to `test` in dev. |
 | `AWS_SECRET_ACCESS_KEY` | Local optional | AWS SDK clients | LocalStack secret key. Defaults to `test` in dev. |
-| `LOCAL_AWS_ENDPOINT` | Local optional | `src/libs/aws-client-config.lib.ts` | Shared LocalStack endpoint. Defaults to `http://localhost:4566`. |
-| `SQS_ENDPOINT` | Optional | `src/libs/sqs.lib.ts` | Custom SQS-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for SQS. |
-| `SNS_ENDPOINT` | Optional | `src/libs/sns.lib.ts` | Custom SNS-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for SNS. |
-| `DYNAMODB_ENDPOINT` | Optional | `src/libs/dynamodb.lib.ts` | Custom DynamoDB-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for DynamoDB. |
+| `LOCAL_AWS_ENDPOINT` | Local optional | `src/libs/aws-client-config.ts` | Shared LocalStack endpoint. Defaults to `http://localhost:4566`. |
+| `SQS_ENDPOINT` | Optional | `src/libs/sqs.ts` | Custom SQS-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for SQS. |
+| `SNS_ENDPOINT` | Optional | `src/libs/sns.ts` | Custom SNS-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for SNS. |
+| `DYNAMODB_ENDPOINT` | Optional | `src/libs/dynamodb.ts` | Custom DynamoDB-compatible endpoint. Overrides `LOCAL_AWS_ENDPOINT` for DynamoDB. |
 | `DRY_RUN` | Optional | SQS and SNS publishers | Set to `true` or `1` to skip batch publishing. |
 | `USER_EVENTS_QUEUE_NAME` | Example | SQS examples | Local queue name. |
 | `USER_EVENTS_QUEUE_URL` | Example | SQS examples | Full local queue URL. |
@@ -335,8 +337,8 @@ yarn sls:calculate-service remove \
 | `USER_EVENTS_TOPIC_NAME` | Example | SNS examples | Local topic name. |
 | `USER_EVENTS_TOPIC_ARN` | Example | SNS examples | Full local topic ARN. |
 | `USERS_TABLE_NAME` | Example | DynamoDB examples and `src/services/user-service/__sls/tables.ts` | DynamoDB table name. |
-| `LOCAL_SQS_EVENT_HANDLERS` | Local optional | `src/libs/sqs.lib.ts` | Comma-separated `queueName=functionName` map for local SQS dispatch. |
-| `LOCAL_SNS_EVENT_HANDLERS` | Local optional | `src/libs/sns.lib.ts` | Comma-separated `topicName=functionName` map for local SNS dispatch. |
+| `LOCAL_SQS_EVENT_HANDLERS` | Local optional | `src/libs/sqs.ts` | Comma-separated `queueName=functionName` map for local SQS dispatch. |
+| `LOCAL_SNS_EVENT_HANDLERS` | Local optional | `src/libs/sns.ts` | Comma-separated `topicName=functionName` map for local SNS dispatch. |
 
 ## AWS Helpers
 
@@ -460,9 +462,9 @@ invokeCreateUser(...)
 - Keep API handlers focused on transport concerns.
 - Put business operations behind resolver Lambdas.
 - Keep shared Lambda utilities in `src/libs`.
-- Keep common Serverless defaults in `src/services/sls.defaults.ts`.
+- Keep common Serverless defaults in `src/sls.defaults.ts`.
 - Keep service infrastructure resources and IAM permissions in `src/services/<service>/__sls`.
-- Keep stack and function names in `src/constants/service.const.ts`.
+- Keep stack, function, handler, route, and resource constants in `src/services/<service>/__sls/const.ts`.
 - Use path aliases for stable imports instead of long relative paths.
 - Keep local test payloads in each service-local `__test` directory.
 

@@ -2,7 +2,7 @@ import { invokeFunction } from '@lib/invoke-function';
 import {
     CALCULATE_SERVICE_FN,
     SERVERLESS_CALCULATE_SERVICE_NAME,
-} from '@constants/service.const';
+} from '../../__sls/const';
 import type {
     CalculateServiceArgType,
 } from '../../interfaces/calculate-service-arg.interface';
