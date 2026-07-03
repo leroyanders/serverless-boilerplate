@@ -1,7 +1,7 @@
 import { config } from 'dotenv';
 
 config({
-    path: '../../../.env',
+    path: '../.env',
     override: true,
     quiet: true,
 });
@@ -33,7 +33,7 @@ export const servicePackage = {
 
 export const custom = {
     dotenv: {
-        path: '../../../.env',
+        path: '../.env',
         logging: false,
         variableExpansion: false,
         required: {
@@ -44,7 +44,7 @@ export const custom = {
         bundle: true,
         minify: true,
         platform: 'node',
-        tsconfig: '../../../tsconfig.json',
+        tsconfig: '../tsconfig.json',
     },
 } as Aws.Custom;
 
