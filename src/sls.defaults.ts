@@ -211,17 +211,6 @@ export const makeSNSArn = (topicName: string): string =>
 export const makeLambdaArn = (functionName: string): string =>
     `arn:aws:lambda:${getRegion()}:${getAccountId()}:function:${functionName}`;
 
-const toResolverName = (functionName: string): string =>
-    functionName.endsWith('Resolver')
-        ? functionName
-        : `${functionName}Resolver`;
-
-export const makeResolverArn = (
-    functionName: string,
-    stack: string,
-): string =>
-    `arn:aws:lambda:${getRegion()}:${getAccountId()}:function:${stack}-${toResolverName(functionName)}`;
-
 const isIamRoleStatement = (
     value: IamRoleStatement | IamRoleStatementGroup,
 ): value is IamRoleStatement =>
